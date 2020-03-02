@@ -10,14 +10,11 @@ import (
 
 // An example of how to create and remove branches or any other kind of reference.
 func main() {
-	CheckArgs("<url>", "<directory>")
-	url, directory := os.Args[1], os.Args[2]
+	CheckArgs("<path>")
+	path := os.Args[1]
 
 	// Clone the given repository to the given directory
-	Info("git clone %s %s", url, directory)
-	r, err := git.PlainClone(directory, false, &git.CloneOptions{
-		URL: url,
-	})
+	r, err := git.PlainOpen(path)
 	CheckIfError(err)
 
 	// Create a new branch to the current HEAD
