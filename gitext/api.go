@@ -40,6 +40,7 @@ func(c *Client) GetRef(owner,repo string) ([]Ref,error) {
 		return []Ref{}, err
 	}
 	if resp.Rate.Remaining<=1 {
+		fmt.Println("wait",resp.Rate.Reset.String())
 		<- time.After(time.Until(resp.Rate.Reset))
 	}
 	var r = []Ref{}
