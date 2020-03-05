@@ -6,7 +6,7 @@ import (
 
 type Ref struct {
 	Name string
-	Hash [20]byte
+	Hash string
 }
 type Record struct {
 	Language string

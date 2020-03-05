@@ -18,6 +18,8 @@ func main() {
 		return
 	}
 	defer db.Close()
+	api := gitext.NewGitHubClient()
+	
 	f, err := os.Open(os.Args[1])
 	if err != nil {
 		fmt.Println(err)
@@ -33,10 +35,15 @@ func main() {
 		owner := v[2]
 		project := v[1]
 		star, _ := strconv.ParseInt(v[4], 10, 64)
+		refs,err := api.GetRef(owner,project)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
 		r := gitext.Record{
 			v[5],
 			uint64(star),
-			gitext.EmptyRef(),
+			refs,
 			uint64(time.Now().Unix()),
 		}
 		fmt.Println(k, owner, project)
