@@ -18,9 +18,16 @@ func main() {
 		return
 	}
 	defer db.Close()
-	api := gitext.NewGitHubClient()
-	
-	f, err := os.Open(os.Args[1])
+
+	for k:=1;k<67;k++ {
+		fn := fmt.Sprintf("%s/repo_%d.csv",os.Args[1],k)
+		ProcessCVS(fn,db)
+	}
+
+}
+
+func ProcessCVS(fn string, db *db.DB) {
+	f, err := os.Open(fn)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -35,11 +42,8 @@ func main() {
 		owner := v[2]
 		project := v[1]
 		star, _ := strconv.ParseInt(v[4], 10, 64)
-		refs,err := api.GetRef(owner,project)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
+		refs := gitext.EmptyRef()
+		
 		r := gitext.Record{
 			v[5],
 			uint64(star),

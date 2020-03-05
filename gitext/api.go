@@ -1,8 +1,9 @@
 package gitext
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/google/go-github/v29/github"
 	"golang.org/x/oauth2"
@@ -23,15 +24,23 @@ func NewGitHubClient() *Client {
 	client := github.NewClient(tc)
 	return &Client{client,ctx}
 }
-
+func NewGitHubClientWithoutToken() *Client {
+	
+	ctx := context.Background()
+	client := github.NewClient(nil)
+	return &Client{client,ctx}
+}
 func(c *Client) GetRef(owner,repo string) ([]Ref,error) {
 
 	opt := &github.ReferenceListOptions{
 		ListOptions: github.ListOptions{PerPage: 10},
 	}
-	refs, _, err := c.C.Git.ListRefs(c.Ctx, owner, repo, opt)
+	refs, resp, err := c.C.Git.ListRefs(c.Ctx, owner, repo, opt)
 	if err != nil {
 		return []Ref{}, err
+	}
+	if resp.Rate.Remaining<=1 {
+		<- time.After(time.Until(resp.Rate.Reset))
 	}
 	var r = []Ref{}
 	for _,v := range refs {
@@ -39,4 +48,23 @@ func(c *Client) GetRef(owner,repo string) ([]Ref,error) {
 		r = append(r,ri)
 	}
 	return r,nil
+}
+
+type Repository struct {
+	ID int64
+	FullName string
+}
+
+func(c *Client) ListAll(start int64) (int64,[]Repository, error) {
+	opts := &github.RepositoryListAllOptions{start}
+	repos,_,err := c.C.Repositories.ListAll(c.Ctx, opts)
+	if err != nil {
+		return start+1,[]Repository{},err
+	}
+	var r = []Repository{}
+	for _,v := range repos {
+		ri := Repository{*v.ID,*v.FullName}
+		r = append(r,ri)
+	}
+	return r[len(r)-1].ID,r,nil
 }
