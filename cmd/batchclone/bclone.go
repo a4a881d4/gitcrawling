@@ -34,22 +34,30 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	defer rdb.Close()
+
 	var has bool
 	if has,err = rdb.HasRef(owner,project); has {
-		if ref,err = rdb.GetRef(owner,project); err != nil {
+		if ref,err = rdb.GetRef(owner,project); err == nil {
 			dump(ref)
+		} else {
+			fmt.Println(err)
 		}
 	}
 	if *argForce {
-		url := fmt.Sprintf("http://github.com/%s/%s.git",owner,project)
-		ref,err = gitext.Clone(url,*argReposDir)
-		if err != nil {
+		if ref,err = CloneAndSave(owner,project,*argReposDir,rdb); err == nil {
+			dump(ref)
+		} else {
 			fmt.Println(err)
-			return
 		}
-		err = rdb.PutRefSync(owner,project,ref)
-		dump(ref)
 	}
+}
+
+func CloneAndSave(owner,project,ReposDir string, rdb *db.DB) (ref []gitext.Ref,err error) {
+	url := fmt.Sprintf("http://github.com/%s/%s.git",owner,project)
+	ref,err = gitext.Clone(url,ReposDir)
+	err = rdb.PutRefSync(owner,project,ref)
+	return
 }
 
 func dump(ref []gitext.Ref) {
