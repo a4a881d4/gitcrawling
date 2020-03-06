@@ -23,7 +23,6 @@ func main() {
 		fn := fmt.Sprintf("%s/repo_%d.csv",os.Args[1],k)
 		ProcessCVS(fn,db)
 	}
-
 }
 
 func ProcessCVS(fn string, db *db.DB) {
