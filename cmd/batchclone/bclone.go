@@ -84,9 +84,17 @@ func CloneAndSave(owner,project,ReposDir string, rdb,bdb *db.DB) (ref []gitext.R
 	url := fmt.Sprintf("http://%s/%s/%s.git",*argGithub,owner,project)
 	var blobs map[plumbing.Hash][]byte
 	ref,blobs,err = gitext.CloneToMem(url)
+	var c = 0
 	for k,v := range blobs {
-		err = bdb.PutBlob(k,v)
+		if err = bdb.PutBlob(k,v); err !=nil {
+			fmt.Println(err)
+		}
+		c++
+		if c%1000 == 999 {
+			fmt.Printf("*")
+		}
 	}
+	fmt.Println("")
 	err = rdb.PutRefSync(owner,project,ref)
 	return
 }
