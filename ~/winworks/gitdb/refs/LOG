@@ -1,0 +1,15 @@
+=============== Mar 6, 2020 (CST) ===============
+23:40:48.047380 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+23:40:48.202742 db@open opening
+23:40:48.205368 version@stat F·[] S·0B[] Sc·[]
+23:40:48.408002 db@janitor F·2 G·0
+23:40:48.408081 db@open done T·205.2518ms
+=============== Mar 6, 2020 (CST) ===============
+23:41:10.744174 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+23:41:10.745543 version@stat F·[] S·0B[] Sc·[]
+23:41:10.745663 db@open opening
+23:41:10.745938 journal@recovery F·1
+23:41:10.747119 journal@recovery recovering @1
+23:41:10.762490 version@stat F·[] S·0B[] Sc·[]
+23:41:10.878636 db@janitor F·2 G·0
+23:41:10.878709 db@open done T·132.9621ms

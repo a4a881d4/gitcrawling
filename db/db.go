@@ -73,3 +73,35 @@ func (self *DB) ForEachRepo(cb func(owner, project string, r *gitext.Record)) (e
 	})
 	return nil
 }
+
+func keyRef(owner, project string) []byte {
+	return []byte("r/" + owner + "/" + project)
+}
+
+func(self *DB) PutRefSync(owner, project string, r []gitext.Ref) (err error) {
+	var buf []byte
+	if buf, err = rlp.EncodeToBytes(r); err != nil {
+		return
+	}
+	opts := &opt.WriteOptions{Sync: true}
+	err = self.db.Put(keyRef(owner, project), buf, opts)
+	return
+}
+
+func(self *DB) HasRef(owner, project string) (bool, error) {
+	return self.db.Has(keyRef(owner, project),nil)
+}
+
+func(self *DB) DelRef(owner, project string) error {
+	return self.db.Delete(keyRef(owner, project),nil)
+}
+
+func (self *DB) GetRef(owner, project string) ([]gitext.Ref, error) {
+	var r []gitext.Ref
+	rlpRecord, err := self.db.Get(keyRef(owner, project), nil)
+	if err != nil {
+		return nil, err
+	}
+	err = rlp.DecodeBytes(rlpRecord, &r)
+	return r, err
+}
