@@ -8,6 +8,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 type DB struct {
@@ -104,4 +105,17 @@ func (self *DB) GetRef(owner, project string) ([]gitext.Ref, error) {
 	}
 	err = rlp.DecodeBytes(rlpRecord, &r)
 	return r, err
+}
+
+func keyBlob(hash plumbing.Hash) []byte {
+	return append([]byte("b/"),hash[:]...)
+}
+
+func (self *DB) PutBlob(hash plumbing.Hash, v []byte) (err error) {
+	err = self.db.Put(keyBlob(hash), v, nil)
+	return
+}
+
+func(self *DB) GetBlob(h string) ([]byte,error) {
+	return self.db.Get(keyBlob(plumbing.NewHash(h)),nil)
 }
