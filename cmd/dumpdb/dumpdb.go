@@ -27,7 +27,7 @@ func main() {
 			}
 			if len(refs)>0 {
 				r.Refs = refs
-				db.PutRepo(owner, project,r)
+				db.PutRepoSync(owner, project,r)
 			}
 		}
 	})

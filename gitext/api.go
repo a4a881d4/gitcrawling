@@ -41,7 +41,7 @@ func(c *Client) GetRef(owner,repo string) ([]Ref,error) {
 	}
 	if resp.Rate.Remaining<=1 {
 		fmt.Println("wait",resp.Rate.Reset.String())
-		<- time.After(time.Until(resp.Rate.Reset))
+		<- time.After(time.Until(resp.Rate.Reset.Time))
 	}
 	var r = []Ref{}
 	for _,v := range refs {

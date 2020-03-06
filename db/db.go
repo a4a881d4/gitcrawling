@@ -42,7 +42,15 @@ func (self *DB) PutRepo(owner, project string, r *gitext.Record) (err error) {
 	err = self.db.Put(keyRepo(owner, project), buf, nil)
 	return
 }
-
+func (self *DB) PutRepoSync(owner, project string, r *gitext.Record) (err error) {
+	var buf []byte
+	if buf, err = rlp.EncodeToBytes(r); err != nil {
+		return
+	}
+	opts := &opt.WriteOptions{Sync: true}
+	err = self.db.Put(keyRepo(owner, project), buf, opts)
+	return
+}
 func (self *DB) Close() {
 	self.db.Close()
 }
