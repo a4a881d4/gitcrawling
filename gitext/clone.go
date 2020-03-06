@@ -23,7 +23,7 @@ func Clone(url,repos string) ([]Ref,error) {
 
 	storage := r.Storer.(*memory.Storage)
 
-	gfs := osfs.New(repos+"/objects")
+	gfs := osfs.New(repos)
 	dir := dotgit.New(gfs)
 	for k, o := range storage.Objects {
 		if _, err := SetEncodedObject(dir, o); err != nil {

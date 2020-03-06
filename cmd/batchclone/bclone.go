@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	argReposDir = flag.String("r","~/winworks/gitdb","The dir story every thing")
+	argReposDir = flag.String("r",".gitdb","The dir story every thing")
 	argForce    = flag.Bool("f",false,"force re clone")
 )
 
