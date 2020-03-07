@@ -2,6 +2,7 @@ package gitext
 
 import (
 	"encoding/json"
+	"time"
 )
 
 type Ref struct {
