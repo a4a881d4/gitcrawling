@@ -12,7 +12,7 @@ type Ref struct {
 
 type RefRecord struct {
 	LocalOK  bool
-	RemoteOK bool
+	ServerOK bool
 	Refs     []Ref
 	Last     time.Time
 }
@@ -25,7 +25,7 @@ func(r *RefRecord) DecodeRef() []byte {
 func EncodeRef(buf []byte) *RefRecord {
 	var r = RefRecord{}
 	json.Unmarshal(buf,&r)
-	return r
+	return &r
 }
 
 func(r *RefRecord) OK() bool {

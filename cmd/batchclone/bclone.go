@@ -46,12 +46,12 @@ func main() {
 			path := fmt.Sprintf("%s/repos/%s/%s",*argReposDir,owner,project)
 			r, err := gitext.PlainCloneFS(url,path)
 			if err != nil {
-				return nil,err
+				fmt.Println(err)
 			}
 		
 			ref, err := r.Head()
 			if err != nil {
-				return nil,err
+				fmt.Println(err)
 			}
 			fmt.Println("HEAD: ", ref.Hash().String())
 		}
