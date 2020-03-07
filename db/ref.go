@@ -33,13 +33,13 @@ func(self *RefDB) DelRef(owner, project string) error {
 	return self.db.Delete(keyRef(owner, project),nil)
 }
 
-func (self *RefDB) GetRef(owner, project string) ([]gitext.Ref, error) {
+func (self *RefDB) GetRef(owner, project string) []gitext.Ref {
 	buf, err := self.db.Get(keyRef(owner, project), nil)
 	if err != nil {
-		return nil, err
+		return []gitext.Ref{}
 	}
 	record := gitext.EncodeRef(buf)
-	return record.Refs, err
+	return record.Refs
 }
 
 func (self *RefDB) getRef(owner, project string) (*gitext.RefRecode, error) {

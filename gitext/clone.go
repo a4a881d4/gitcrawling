@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"gopkg.in/src-d/go-billy.v4/osfs"
+	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/storage/filesystem"
@@ -63,6 +64,11 @@ func memrefToRef(r memory.ReferenceStorage) (ret []Ref) {
 		ret = append(ret,i)
 	}
 	return
+}
+
+func RepoRef(r *git.Repository) []Ref{
+	storage := r.Storer.(*filesystem.Storage)
+	return fsrefToRef(storage.ReferenceStorage)
 }
 
 func fsrefToRef(s filesystem.ReferenceStorage) (ret []Ref) {
