@@ -20,14 +20,9 @@ var (
 
 func main() {
 	flag.Parse()
-	rdb, err := db.NewDB(*argReposDir+"/refs")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	rdb := db.NewRefDB(rdb)
-	defer rdb.Close()
-
+	
+	rdb := db.NewRefDB(*argReposDir+"/refs")
+	
 	buf,err := ioutil.ReadFile(flag.Arg(0))
 	if err!=nil {
 		fmt.Println(err)
@@ -42,7 +37,7 @@ func main() {
 	}
 	for k,v := range rec {
 		fmt.Println("Process",k,"stars")
-		for _,name := range v {
+		for num,name := range v {
 			repo := strings.Split(name,"/")
 			if len(repo)!=2 {
 				fmt.Println("error name",name)
@@ -53,7 +48,7 @@ func main() {
 				dump(rdb.GetRef(owner,project))
 				continue
 			}
-			fmt.Println("Begin to Clone",owner,project)
+			fmt.Println("Begin to Clone",owner,project,num)
 			url  := fmt.Sprintf("http://%s/%s/%s",*argGithub,owner,project)	
 			path := fmt.Sprintf("%s/repos/%s/%s",*argReposDir,owner,project)
 			_, err := os.Stat(path)
@@ -70,9 +65,9 @@ func main() {
 				fmt.Println(err)
 			}
 			fmt.Println("HEAD: ", ref.Hash().String())
-			ref := gitext.RepoRef(r)
-			rdb.PutRepo(owner,project,ref)
-			dump(ref)
+			refs := gitext.RepoRef(r)
+			rdb.PutRefSync(owner,project,refs)
+			dump(refs)
 		}
 	}
 }

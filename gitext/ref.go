@@ -13,6 +13,7 @@ type Ref struct {
 type RefRecord struct {
 	LocalOK  bool
 	ServerOK bool
+	Build    bool
 	Refs     []Ref
 	Last     time.Time
 }
@@ -40,12 +41,23 @@ func(r *RefRecord) LastSeen() time.Time {
 	return r.Last
 }
 
+func(r *RefRecord) IsBuild() time.Time {
+	return r.Last
+}
+
+func NewBuildRecord(refs []Ref) *RefRecord {
+	r := NewRefRecord(refs)
+	r.Build = true
+	return r
+}
+
 func NewRefRecord(refs []Ref) *RefRecord {
 	remoteOk := len(refs)>0
 	return &RefRecord{
 		Last    : time.Now(),
 		LocalOK : true,
 		ServerOK: remoteOk,
+		Build   : false,
 		Refs    : refs,
 	}
 }

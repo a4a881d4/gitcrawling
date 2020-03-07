@@ -1,49 +1,87 @@
 package db
 import (
+	"fmt"
+	"time"
+
 	"github.com/a4a881d4/gitcrawling/gitext"
-	"github.com/ethereum/go-ethereum/ethdb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 type RefDB struct {
-	db *leveldb.DB
+	Path string
+	db   *DB
+	Retry int
 }
 
-func NewRefDB(db *DB) *RefDB {
-	return &RefDB{db.GetDB()}
+func NewRefDB(path string) *RefDB {
+	return &RefDB{
+		Path:path,
+		Retry:10,
+	}
 }
+
+func(self *RefDB) open(retry int) *leveldb.DB {
+	if retry>=self.retry {
+		self.db = nil
+		return self.db
+	}
+	opts := &opt.Options{OpenFilesCacheCapacity: 5}
+	db, err := leveldb.OpenFile(dir, opts)
+	if err != nil {
+		self.db = nil
+		<- time.After(time.Second*1)
+		fmt.Println("Retry Open",retry)
+		return self.open(retry+1)
+	}
+	self.db = db
+	return db
+}
+
+func(self *RefDB) Open() *leveldb.DB {
+	return self.open(0)
+}
+
 func(self *RefDB) Close() {
-	self.db.Close()
+	defer func(){
+		self.db = nil
+	}()
+	if self.db!=nil {
+		self.db.Close()
+	}
 }
+
 func keyRef(owner, project string) []byte {
 	return []byte("r/" + owner + "/" + project)
 }
 
 func(self *RefDB) PutRefSync(owner, project string, r []gitext.Ref) (err error) {
+	defer self.Close()
 	opts := &opt.WriteOptions{Sync: true}
-	err = self.db.Put(keyRef(owner, project), gitext.NewRefRecode(r).DecodeRef(), opts)
+	err = self.Open().Put(keyRef(owner, project), gitext.NewRefRecord(r).DecodeRef(), opts)
 	return
 }
 
 func(self *RefDB) HasRef(owner, project string) (bool, error) {
-	return self.db.Has(keyRef(owner, project),nil)
+	defer self.Close()
+	return self.Open().Has(keyRef(owner, project),nil)
 }
 
 func(self *RefDB) DelRef(owner, project string) error {
-	return self.db.Delete(keyRef(owner, project),nil)
+	defer self.Close()
+	return self.Open().Delete(keyRef(owner, project),nil)
 }
 
 func (self *RefDB) GetRef(owner, project string) []gitext.Ref {
-	buf, err := self.db.Get(keyRef(owner, project), nil)
+	record,err := self.getRef(owner, project)
 	if err != nil {
 		return []gitext.Ref{}
 	}
-	record := gitext.EncodeRef(buf)
 	return record.Refs
 }
 
-func (self *RefDB) getRef(owner, project string) (*gitext.RefRecode, error) {
-	buf, err := self.db.Get(keyRef(owner, project), nil)
+func (self *RefDB) getRef(owner, project string) (*gitext.RefRecord, error) {
+	buf, err := self.Open().Get(keyRef(owner, project), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +90,7 @@ func (self *RefDB) getRef(owner, project string) (*gitext.RefRecode, error) {
 }
 
 func(self *RefDB) OK(owner, project string) bool {
-	r,err := getRef(owner, project)
+	r,err := self.getRef(owner, project)
 	if err!=nil {
 		return false
 	} else {
@@ -61,7 +99,7 @@ func(self *RefDB) OK(owner, project string) bool {
 }
 
 func(self *RefDB) RemoteOK(owner, project string) bool {
-	r,err := getRef(owner, project)
+	r,err := self.getRef(owner, project)
 	if err!=nil {
 		return true
 	} else {

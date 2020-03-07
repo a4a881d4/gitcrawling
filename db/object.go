@@ -80,8 +80,8 @@ func(self *ObjDB) PutObj(b *object.Blob) error {
 	return nil
 }
 
-func(self *ObjDB) PutObj(iter *object.BlobIter) error {
-	iter.ForEach(self.PutObj)
+func(self *ObjDB) PutObjects(iter *object.BlobIter) error {
+	return iter.ForEach(self.PutObj)
 }
 
 func(self *ObjDB) Msg() chan string {
