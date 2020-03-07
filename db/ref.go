@@ -62,6 +62,17 @@ func(self *RefDB) PutRefSync(owner, project string, r []gitext.Ref) (err error) 
 	return
 }
 
+func(self *RefDB) SetBuild(owner, project string, ir []gitext.Ref) (r []gitext.Ref,err error) {
+	defer self.Close()
+	if len(ir)==0 {
+		ir = self.GetRef(owner, project)
+	}
+	opts := &opt.WriteOptions{Sync: true}
+	err = self.Open().Put(keyRef(owner, project), gitext.NewBuildRecord(r).DecodeRef(), opts)
+	r = ir
+	return
+}
+
 func(self *RefDB) HasRef(owner, project string) (bool, error) {
 	defer self.Close()
 	return self.Open().Has(keyRef(owner, project),nil)

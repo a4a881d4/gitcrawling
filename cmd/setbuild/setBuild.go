@@ -14,8 +14,6 @@ import (
 
 var (
 	argReposDir = flag.String("r",".gitdb","The dir story every thing")
-	argForce    = flag.Bool("f",false,"force re clone")
-	argV        = flag.Bool("v",false,"V")
 )
 
 func main() {
@@ -25,15 +23,6 @@ func main() {
 
 	rdb := db.NewRefDB(*argReposDir+"/refs")
 	
-	ldb, err := db.NewDB(*argReposDir+"/objects")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	bdb := db.NewObjectDB(ldb)
-	bdb.Force = *argForce
-	defer bdb.Close()
-
 	buf,err := ioutil.ReadFile(flag.Arg(0))
 	if err!=nil {
 		fmt.Println(err)
@@ -63,39 +52,17 @@ func main() {
 			}
 			if rdb.IsBuild(owner,project) {
 				fmt.Println("has build",owner,project)
-				if !*argForce {
-					continue
-				}
 			}
-			fmt.Println("Begin to build objects",owner,project)
-			if ref,err = OpenAndSave(owner,project,*argReposDir,bdb); err != nil {
+			fmt.Println("Set build object flag",owner,project)
+			
+			ref,err = rdb.SetBuild(owner,project,[]gitext.Ref{})
+			if err != nil {
 				fmt.Println(err)
 			} else {
 				dump(ref)
-				rdb.SetBuild(owner,project,ref)
 			}
 		}
 	}
-}
-
-func OpenAndSave(owner,project,ReposDir string, bdb *db.ObjDB) (ref []gitext.Ref,err error) {
-	path  := fmt.Sprintf("%s/repos/%s/%s",ReposDir,owner,project)
-	r,err := gitext.PlainOpen(path)
-	if err != nil {
-		return []gitext.Ref{},err
-	}
-	blobs,err := r.BlobObjects()
-	if err != nil {
-		return []gitext.Ref{},err
-	}
-	go func(){
-		err := bdb.PutObjects(blobs)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}()
-	bdb.Wait(*argV,100)
-	return gitext.RepoRef(r),err
 }
 
 func dump(ref []gitext.Ref) {

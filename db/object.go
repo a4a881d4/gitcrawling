@@ -82,7 +82,7 @@ func(self *ObjDB) PutObj(b *object.Blob) error {
 
 func(self *ObjDB) PutObjects(iter *object.BlobIter) error {
 	err := iter.ForEach(self.PutObj)
-	self.msg <- fmt.Sprintf("I: Finish")
+	self.msg <- fmt.Sprintf("F: Finish")
 	return err
 }
 
@@ -106,14 +106,13 @@ func(self *ObjDB) Wait(v bool,show int) {
 			}
 		case info[:2]=="F:":
 			fmt.Println("")
-			fmt.Println("Warning:",info[2:])
+			fmt.Println("Finish:",info[2:])
 			return
 		case info[:2]=="I:":
 			c++
 			if c%show==0 {
 				fmt.Printf("*")
 			}
-			return
 		}
 	}
 }
