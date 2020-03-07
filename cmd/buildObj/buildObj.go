@@ -21,14 +21,8 @@ func main() {
 	var ref []gitext.Ref
 	var err error
 
-	rdb, err := db.NewDB(*argReposDir+"/refs")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	rdb := db.NewRefDB(rdb)
-	defer rdb.Close()
-
+	rdb := db.NewRefDB(*argReposDir+"/refs")
+	
 	bdb, err := db.NewDB(*argReposDir+"/objects")
 	if err != nil {
 		fmt.Println(err)
@@ -59,27 +53,37 @@ func main() {
 			}
 			owner,project := repo[0],repo[1]
 			var has bool
-			if has,err = rdb.HasRef(owner,project); has {
-				if ref,err = rdb.GetRef(owner,project); err == nil {
-					dump(ref)
-				} else {
-					fmt.Println(err)
+			if !rdb.OK(owner,project) {
+				fmt.Println("miss",owner,project)
+				continue
+			}
+			if rdb.IsBuild() {
+				fmt.Println("has build",owner,project)
+				if !*argForce {
+					continue
 				}
 			}
-		
-			if !has || *argForce {
-				fmt.Println("Begin to Clone",owner,project)
-				if ref,err = OpenAndSave(owner,project,*argReposDir,rdb,bdb); err != nil {
-					fmt.Println(err)
-				}
+			fmt.Println("Begin to build objects",owner,project)
+			if ref,err = OpenAndSave(owner,project,*argReposDir,bdb); err != nil {
+				fmt.Println(err)
+			} else {
+				dump(ref)
 			}
 		}
 	}
 }
 
-func OpenAndSave(owner,project,ReposDir string, rdb,bdb *db.DB) (ref []gitext.Ref,err error) {
-	path := fmt.Sprintf("%s/repos/%s/%s",ReposDir,owner,project)
-
+func OpenAndSave(owner,project,ReposDir string, bdb *db.ObjDB) (ref []gitext.Ref,err error) {
+	path  := fmt.Sprintf("%s/repos/%s/%s",ReposDir,owner,project)
+	r,err := gitext.PlainOpen(path)
+	go func(){
+		err := bdb.PutObjects(r.Objects())
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
+	bdb.Wait(true,100)
+	return gitext.RepoRef(r),err
 }
 
 func dump(ref []gitext.Ref) {

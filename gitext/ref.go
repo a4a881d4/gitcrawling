@@ -41,8 +41,8 @@ func(r *RefRecord) LastSeen() time.Time {
 	return r.Last
 }
 
-func(r *RefRecord) IsBuild() time.Time {
-	return r.Last
+func(r *RefRecord) IsBuild() bool {
+	return r.Build
 }
 
 func NewBuildRecord(refs []Ref) *RefRecord {

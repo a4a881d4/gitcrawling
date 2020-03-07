@@ -81,6 +81,7 @@ func (self *RefDB) GetRef(owner, project string) []gitext.Ref {
 }
 
 func (self *RefDB) getRef(owner, project string) (*gitext.RefRecord, error) {
+	defer self.Close()
 	buf, err := self.Open().Get(keyRef(owner, project), nil)
 	if err != nil {
 		return nil, err
@@ -104,5 +105,14 @@ func(self *RefDB) RemoteOK(owner, project string) bool {
 		return true
 	} else {
 		return r.RemoteOK()
+	}
+}
+
+func(self *RefDB) IsBuild(owner, project string) bool {
+	r,err := self.getRef(owner, project)
+	if err!=nil {
+		return false
+	} else {
+		return r.IsBuild()
 	}
 }

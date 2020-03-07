@@ -81,9 +81,39 @@ func(self *ObjDB) PutObj(b *object.Blob) error {
 }
 
 func(self *ObjDB) PutObjects(iter *object.BlobIter) error {
-	return iter.ForEach(self.PutObj)
+	err := iter.ForEach(self.PutObj)
+	self.msg <- fmt.Sprintf("I: Finish")
+	return err
 }
 
 func(self *ObjDB) Msg() chan string {
 	return self.msg
+}
+
+func(self *ObjDB) Wait(v bool,show int) {
+	var c int
+	c = 0
+	for{
+		info :<- self.msg
+		switch{
+		case info[:2]=="E:":
+			fmt.Println("")
+			fmt.Println("Error:",info[2:])
+		case info[:2]=="W:":
+			if v{
+				fmt.Println("")
+				fmt.Println("Warning:",info[2:])
+			}
+		case info[:2]=="F:":
+			fmt.Println("")
+			fmt.Println("Warning:",info[2:])
+			return
+		case info[:2]=="I:":
+			c++
+			if c%show==0 {
+				fmt.Printf("*")
+			}
+			return
+		}
+	}
 }
