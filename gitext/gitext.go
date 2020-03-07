@@ -8,6 +8,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/format/objfile"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 
 	"gopkg.in/src-d/go-git.v4/storage/filesystem/dotgit"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
@@ -55,7 +56,12 @@ func PlainCloneFS(url,path string) (*git.Repository, error) {
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 		Progress: os.Stdout,
 	}
-
+	
+	token := os.Getenv("GITHUB_AUTH_TOKEN")
+	if token != "" {
+		auth  := http.TokenAuth{Token:token}
+		o.Auth = &auth
+	}
 	return git.PlainClone(path,true,o)
 }
 func SetEncodedObject(dir *dotgit.DotGit,o plumbing.EncodedObject) (h plumbing.Hash, err error) {

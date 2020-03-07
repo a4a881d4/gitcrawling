@@ -99,5 +99,5 @@ func CloneToMem(url string) ([]Ref,map[plumbing.Hash][]byte,error) {
 			blobs[hash]=blob
 		}
 	}
-	return refToRef(storage.ReferenceStorage),blobs,nil
+	return memrefToRef(storage.ReferenceStorage),blobs,nil
 }

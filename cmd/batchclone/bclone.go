@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/a4a881d4/gitcrawling/db"
@@ -82,7 +85,7 @@ func main() {
 }
 
 func CloneAndSave(owner,project,ReposDir string, rdb,bdb *db.DB) (ref []gitext.Ref,err error) {
-	url  := fmt.Sprintf("http://%s/%s/%s.git",*argGithub,owner,project)
+	url  := fmt.Sprintf("http://%s/%s/%s",*argGithub,owner,project)
 	path := fmt.Sprintf("%s/repos/%s/%s",ReposDir,owner,project)
 	var c = 0
 	ref,err = gitext.CloneToFS(path,url,func(b *object.Blob) (ierr error){
@@ -98,29 +101,37 @@ func CloneAndSave(owner,project,ReposDir string, rdb,bdb *db.DB) (ref []gitext.R
 		
 		r,ierr := b.Reader()
 		if err != nil {
+			fmt.Printf("/")
 			return 
 		}
 		defer gitutil.CheckClose(r,&ierr)
-		buf := make([]byte,b.Size)
-		s,ierr := r.Read(buf)
-		if err!=nil {
-			return
-		}
+		buf := bytes.NewBuffer(make([]byte,b.Size))
+		s,ierr := io.Copy(buf,r)
 		if int64(s)!=b.Size {
+			fmt.Printf(`?`)
 			ierr = fmt.Errorf("blob is too big")
 			return
 		}
-		if ierr = bdb.PutBlob(k,buf); ierr !=nil {
+		if ierr != nil {
+			fmt.Printf(`s`)
+			return
+		}
+		if ierr = bdb.PutBlob(k,buf.Bytes()); ierr !=nil {
+			fmt.Printf(`v`)
 			return
 		}
 		c++
 		if c%1000 == 999 {
 			fmt.Printf("*")
+			os.Stdout.Sync()
 		}
 		return
 	})
 	
 	fmt.Println("")
+	if err != nil {
+		fmt.Println(err)
+	}
 	err = rdb.PutRefSync(owner,project,ref)
 	return
 }
