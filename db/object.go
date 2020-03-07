@@ -94,7 +94,7 @@ func(self *ObjDB) Wait(v bool,show int) {
 	var c int
 	c = 0
 	for{
-		info :<- self.msg
+		info :=<- self.msg
 		switch{
 		case info[:2]=="E:":
 			fmt.Println("")
