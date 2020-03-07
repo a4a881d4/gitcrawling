@@ -1,0 +1,83 @@
+package db
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+
+	"github.com/syndtr/goleveldb/leveldb"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	gitutil "gopkg.in/src-d/go-git.v4/utils/ioutil"
+)
+
+type ObjDB struct {
+	db *leveldb.DB
+	msg chan string
+}
+
+func NewObjectDB(db *DB) *ObjDB {
+	msg := make(chan string,10)
+	return &ObjDB{db.GetDB(),msg}
+}
+func(self *ObjDB) Close() {
+	self.db.Close()
+}
+func keyBlob(hash plumbing.Hash) []byte {
+	return append([]byte("b/"),hash[:]...)
+}
+
+func (self *ObjDB) PutBlob(hash plumbing.Hash, v []byte) (err error) {
+	err = self.db.Put(keyBlob(hash), v, nil)
+	return
+}
+
+func(self *ObjDB) GetBlobByHex(h string) ([]byte,error) {
+	return self.db.Get(keyBlob(plumbing.NewHash(h)),nil)
+}
+func(self *ObjDB) HasBlob(hash plumbing.Hash) (bool, error) {
+	return self.db.Has(keyBlob(hash),nil)
+}
+
+func(self *ObjDB) PutObj(b *object.Blob) error {
+	k := b.ID()
+	if has,err := self.HasBlob(k); has || err!=nil{
+		if has {
+			self.msg <- fmt.Sprintf("W: has obj %s",k.String())
+		}
+		return nil
+	}
+	
+	r,err := b.Reader()
+	if err != nil {
+		self.msg <- fmt.Sprintf("E: get reader failure %s",k.String())
+		return nil
+	}
+	defer gitutil.CheckClose(r,&err)
+
+	buf   := bytes.NewBuffer(make([]byte,b.Size))
+	s,err := io.Copy(buf,r)
+	if int64(s)!=b.Size {
+		self.msg <- fmt.Sprintf("E: Wrony size %s %d:%d",k.String(),s,b.Size)
+		return nil
+	}
+
+	if err != nil {
+		self.msg <- fmt.Sprintf("E: io copy failure %s",k.String())
+		return nil
+	}
+	if err = self.PutBlob(k,buf.Bytes()); err !=nil {
+		self.msg <- fmt.Sprintf("E: put to db failure %s",k.String())
+		return nil
+	}
+	self.msg <- fmt.Sprintf("I: done %s",k.String())
+	return nil
+}
+
+func(self *ObjDB) PutObj(iter *object.BlobIter) error {
+	iter.ForEach(self.PutObj)
+}
+
+func(self *ObjDB) Msg() chan string {
+	return self.msg
+}

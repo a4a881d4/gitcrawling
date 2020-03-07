@@ -1,25 +1,19 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"os"
 	"strings"
 
 	"github.com/a4a881d4/gitcrawling/db"
 	"github.com/a4a881d4/gitcrawling/gitext"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
-	gitutil "gopkg.in/src-d/go-git.v4/utils/ioutil"
 )
 
 var (
 	argReposDir = flag.String("r",".gitdb","The dir story every thing")
 	argForce    = flag.Bool("f",false,"force re clone")
-	argGithub   = flag.String("g","github.com","github server")
 )
 
 func main() {
@@ -73,7 +67,7 @@ func main() {
 		
 			if !has || *argForce {
 				fmt.Println("Begin to Clone",owner,project)
-				if ref,err = CloneAndSave(owner,project,*argReposDir,rdb,bdb); err != nil {
+				if ref,err = OpenAndSave(owner,project,*argReposDir,rdb,bdb); err != nil {
 					fmt.Println(err)
 				}
 			}
@@ -81,53 +75,9 @@ func main() {
 	}
 }
 
-func CloneAndSave(owner,project,ReposDir string, rdb,bdb *db.DB) (ref []gitext.Ref,err error) {
-	url  := fmt.Sprintf("http://%s/%s/%s",*argGithub,owner,project)
+func OpenAndSave(owner,project,ReposDir string, rdb,bdb *db.DB) (ref []gitext.Ref,err error) {
 	path := fmt.Sprintf("%s/repos/%s/%s",ReposDir,owner,project)
-	var c = 0
-	ref,err = gitext.CloneToFS(path,url,func(b *object.Blob) error {
-		k := b.ID()
-		if has,ierr := bdb.HasBlob(k); has || ierr!=nil{
-			if has {
-				fmt.Printf("-")
-			}
-			return nil
-		}
-		
-		r,ierr := b.Reader()
-		if ierr != nil {
-			fmt.Printf("/")
-			return nil
-		}
-		defer gitutil.CheckClose(r,&ierr)
-		buf := bytes.NewBuffer(make([]byte,b.Size))
-		s,ierr := io.Copy(buf,r)
-		if int64(s)!=b.Size {
-			fmt.Printf(`?`)
-			return nil
-		}
-		if ierr != nil {
-			fmt.Printf(`s`)
-			return nil
-		}
-		if ierr = bdb.PutBlob(k,buf.Bytes()); ierr !=nil {
-			fmt.Printf(`v`)
-			return nil
-		}
-		c++
-		if c%1000 == 999 {
-			fmt.Printf("*")
-			os.Stdout.Sync()
-		}
-		return nil
-	})
-	
-	fmt.Println("")
-	if err != nil {
-		fmt.Println(err)
-	}
-	err = rdb.PutRefSync(owner,project,ref)
-	return
+
 }
 
 func dump(ref []gitext.Ref) {

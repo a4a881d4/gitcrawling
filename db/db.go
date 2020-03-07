@@ -8,7 +8,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 type DB struct {
@@ -19,6 +18,10 @@ func NewDB(dir string) (*DB, error) {
 	opts := &opt.Options{OpenFilesCacheCapacity: 5}
 	db, err := leveldb.OpenFile(dir, opts)
 	return &DB{db}, err
+}
+
+func(db *DB) GetDB() *leveldb.DB {
+	return db.db
 }
 
 func keyRepo(owner, project string) []byte {
@@ -75,50 +78,5 @@ func (self *DB) ForEachRepo(cb func(owner, project string, r *gitext.Record)) (e
 	return nil
 }
 
-func keyRef(owner, project string) []byte {
-	return []byte("r/" + owner + "/" + project)
-}
 
-func(self *DB) PutRefSync(owner, project string, r []gitext.Ref) (err error) {
-	var buf []byte
-	if buf, err = rlp.EncodeToBytes(r); err != nil {
-		return
-	}
-	opts := &opt.WriteOptions{Sync: true}
-	err = self.db.Put(keyRef(owner, project), buf, opts)
-	return
-}
 
-func(self *DB) HasRef(owner, project string) (bool, error) {
-	return self.db.Has(keyRef(owner, project),nil)
-}
-
-func(self *DB) DelRef(owner, project string) error {
-	return self.db.Delete(keyRef(owner, project),nil)
-}
-
-func (self *DB) GetRef(owner, project string) ([]gitext.Ref, error) {
-	var r []gitext.Ref
-	rlpRecord, err := self.db.Get(keyRef(owner, project), nil)
-	if err != nil {
-		return nil, err
-	}
-	err = rlp.DecodeBytes(rlpRecord, &r)
-	return r, err
-}
-
-func keyBlob(hash plumbing.Hash) []byte {
-	return append([]byte("b/"),hash[:]...)
-}
-
-func (self *DB) PutBlob(hash plumbing.Hash, v []byte) (err error) {
-	err = self.db.Put(keyBlob(hash), v, nil)
-	return
-}
-
-func(self *DB) GetBlobByHex(h string) ([]byte,error) {
-	return self.db.Get(keyBlob(plumbing.NewHash(h)),nil)
-}
-func(self *DB) HasBlob(hash plumbing.Hash) (bool, error) {
-	return self.db.Has(keyBlob(hash),nil)
-}

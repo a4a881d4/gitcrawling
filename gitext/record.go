@@ -4,10 +4,7 @@ import (
 	"encoding/json"
 )
 
-type Ref struct {
-	Name string
-	Hash string
-}
+
 type Record struct {
 	Language string
 	Star     uint64
