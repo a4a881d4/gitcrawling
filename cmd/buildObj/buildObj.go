@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/a4a881d4/gitcrawling/db"
@@ -24,12 +25,12 @@ func main() {
 
 	rdb := db.NewRefDB(*argReposDir+"/refs")
 	
-	db, err := db.NewDB(*argReposDir+"/objects")
+	ldb, err := db.NewDB(*argReposDir+"/objects")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	bdb := NewObjectDB(db)
+	bdb := db.NewObjectDB(ldb)
 	defer bdb.Close()
 
 	buf,err := ioutil.ReadFile(flag.Arg(0))
@@ -53,8 +54,9 @@ func main() {
 				continue
 			}
 			owner,project := repo[0],repo[1]
-			var has bool
-			if !rdb.OK(owner,project) {
+			path := fmt.Sprintf("%s/repos/%s/%s",*argReposDir,owner,project)
+			_, err := os.Stat(path)
+			if err!=nil {
 				fmt.Println("miss",owner,project)
 				continue
 			}
