@@ -5,6 +5,8 @@ import (
 
 	"gopkg.in/src-d/go-billy.v4/osfs"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"gopkg.in/src-d/go-git.v4/storage/filesystem"
 	"gopkg.in/src-d/go-git.v4/storage/filesystem/dotgit"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
@@ -31,10 +33,31 @@ func Clone(url,repos string) ([]Ref,error) {
 			fmt.Println(k, err)
 		}
 	}
-	return refToRef(storage.ReferenceStorage),nil
+	return memrefToRef(storage.ReferenceStorage),nil
 }
 
-func refToRef(r memory.ReferenceStorage) (ret []Ref) {
+func CloneToFS(path,url string,cb func(*object.Blob) error) ([]Ref,error) {
+	
+	r, err := PlainCloneFS(url,path)
+	if err != nil {
+		return nil,err
+	}
+
+	ref, err := r.Head()
+	if err != nil {
+		return nil,err
+	}
+	fmt.Println("HEAD: ", ref.Hash().String())
+	iter,err := r.BlobObjects()
+	if err != nil {
+		return nil,err
+	}
+	err = iter.ForEach(cb)
+	storage := r.Storer.(*filesystem.Storage)
+	return fsrefToRef(storage.ReferenceStorage),nil
+}
+
+func memrefToRef(r memory.ReferenceStorage) (ret []Ref) {
 	for k,v := range r {
 		i := Ref{k.String(),v.Hash().String()}
 		ret = append(ret,i)
@@ -42,6 +65,18 @@ func refToRef(r memory.ReferenceStorage) (ret []Ref) {
 	return
 }
 
+func fsrefToRef(s filesystem.ReferenceStorage) (ret []Ref) {
+	iter,err := s.IterReferences()
+	if err!=nil {
+		return []Ref{}
+	}
+	iter.ForEach(func(v *plumbing.Reference) error{
+		i := Ref{v.Name().String(),v.Hash().String()}
+		ret = append(ret,i)
+		return nil
+	})
+	return
+}
 func CloneToMem(url string) ([]Ref,map[plumbing.Hash][]byte,error) {
 	blobs := make(map[plumbing.Hash][]byte)
 	r, err := PlainClone(url)

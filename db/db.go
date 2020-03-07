@@ -116,6 +116,9 @@ func (self *DB) PutBlob(hash plumbing.Hash, v []byte) (err error) {
 	return
 }
 
-func(self *DB) GetBlob(h string) ([]byte,error) {
+func(self *DB) GetBlobByHex(h string) ([]byte,error) {
 	return self.db.Get(keyBlob(plumbing.NewHash(h)),nil)
+}
+func(self *DB) HasBlob(hash plumbing.Hash) (bool, error) {
+	return self.db.Has(keyBlob(hash),nil)
 }

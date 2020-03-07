@@ -48,6 +48,16 @@ func PlainClone(url string) (*git.Repository, error) {
 	return git.Clone(storage,nil,o)
 }
 
+func PlainCloneFS(url,path string) (*git.Repository, error) {
+	o := &git.CloneOptions{
+		URL:               url,
+		Depth: 1,
+		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+		Progress: os.Stdout,
+	}
+
+	return git.PlainClone(path,true,o)
+}
 func SetEncodedObject(dir *dotgit.DotGit,o plumbing.EncodedObject) (h plumbing.Hash, err error) {
 	if o.Type() == plumbing.OFSDeltaObject || o.Type() == plumbing.REFDeltaObject {
 		return plumbing.ZeroHash, plumbing.ErrInvalidType

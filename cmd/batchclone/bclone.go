@@ -9,7 +9,8 @@ import (
 
 	"github.com/a4a881d4/gitcrawling/db"
 	"github.com/a4a881d4/gitcrawling/gitext"
-	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	gitutil "gopkg.in/src-d/go-git.v4/utils/ioutil"
 )
 
 var (
@@ -81,19 +82,44 @@ func main() {
 }
 
 func CloneAndSave(owner,project,ReposDir string, rdb,bdb *db.DB) (ref []gitext.Ref,err error) {
-	url := fmt.Sprintf("http://%s/%s/%s.git",*argGithub,owner,project)
-	var blobs map[plumbing.Hash][]byte
-	ref,blobs,err = gitext.CloneToMem(url)
+	url  := fmt.Sprintf("http://%s/%s/%s.git",*argGithub,owner,project)
+	path := fmt.Sprintf("%s/repos/%s/%s",ReposDir,owner,project)
 	var c = 0
-	for k,v := range blobs {
-		if err = bdb.PutBlob(k,v); err !=nil {
-			fmt.Println(err)
+	ref,err = gitext.CloneToFS(path,url,func(b *object.Blob) (ierr error){
+		k := b.ID()
+		var has bool
+		if has,ierr = bdb.HasBlob(k); has || ierr!=nil{
+			if has {
+				ierr = fmt.Errorf("dup blob %s",k.String())
+				fmt.Printf("-")
+			}
+			return
+		}
+		
+		r,ierr := b.Reader()
+		if err != nil {
+			return 
+		}
+		defer gitutil.CheckClose(r,&ierr)
+		buf := make([]byte,b.Size)
+		s,ierr := r.Read(buf)
+		if err!=nil {
+			return
+		}
+		if int64(s)!=b.Size {
+			ierr = fmt.Errorf("blob is too big")
+			return
+		}
+		if ierr = bdb.PutBlob(k,buf); ierr !=nil {
+			return
 		}
 		c++
 		if c%1000 == 999 {
 			fmt.Printf("*")
 		}
-	}
+		return
+	})
+	
 	fmt.Println("")
 	err = rdb.PutRefSync(owner,project,ref)
 	return
