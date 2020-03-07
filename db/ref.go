@@ -10,7 +10,7 @@ import (
 
 type RefDB struct {
 	Path string
-	db   *DB
+	db   *leveldb.DB
 	Retry int
 }
 
@@ -22,12 +22,12 @@ func NewRefDB(path string) *RefDB {
 }
 
 func(self *RefDB) open(retry int) *leveldb.DB {
-	if retry>=self.retry {
+	if retry>=self.Retry {
 		self.db = nil
 		return self.db
 	}
 	opts := &opt.Options{OpenFilesCacheCapacity: 5}
-	db, err := leveldb.OpenFile(dir, opts)
+	db, err := leveldb.OpenFile(self.Path, opts)
 	if err != nil {
 		self.db = nil
 		<- time.After(time.Second*1)
