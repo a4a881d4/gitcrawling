@@ -21,18 +21,20 @@ func main() {
 	var ref []gitext.Ref
 	var err error
 
-	var rdb,bdb *db.DB
-	rdb, err = db.NewDB(*argReposDir+"/refs")
+	rdb, err := db.NewDB(*argReposDir+"/refs")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	rdb := db.NewRefDB(rdb)
 	defer rdb.Close()
-	bdb, err = db.NewDB(*argReposDir+"/objects")
+
+	bdb, err := db.NewDB(*argReposDir+"/objects")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	bdb := db.NewObjectDB(bdb)
 	defer bdb.Close()
 
 	buf,err := ioutil.ReadFile(flag.Arg(0))

@@ -14,15 +14,18 @@ import (
 type ObjDB struct {
 	db *leveldb.DB
 	msg chan string
+	Force bool
 }
 
 func NewObjectDB(db *DB) *ObjDB {
 	msg := make(chan string,10)
-	return &ObjDB{db.GetDB(),msg}
+	return &ObjDB{db.GetDB(),msg,false}
 }
+
 func(self *ObjDB) Close() {
 	self.db.Close()
 }
+
 func keyBlob(hash plumbing.Hash) []byte {
 	return append([]byte("b/"),hash[:]...)
 }
@@ -41,11 +44,14 @@ func(self *ObjDB) HasBlob(hash plumbing.Hash) (bool, error) {
 
 func(self *ObjDB) PutObj(b *object.Blob) error {
 	k := b.ID()
-	if has,err := self.HasBlob(k); has || err!=nil{
-		if has {
-			self.msg <- fmt.Sprintf("W: has obj %s",k.String())
+	if !self.Force {
+		has,err := self.HasBlob(k)
+		if  has || err!=nil {
+			if has {
+				self.msg <- fmt.Sprintf("W: has obj %s %v",k.String(),err)
+			}
+			return nil
 		}
-		return nil
 	}
 	
 	r,err := b.Reader()
