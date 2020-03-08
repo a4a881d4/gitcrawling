@@ -58,11 +58,13 @@ func main() {
 			r, err := gitext.PlainCloneFS(url,path)
 			if err != nil {
 				fmt.Println(err)
+				continue
 			}
 		
 			ref, err := r.Head()
 			if err != nil {
 				fmt.Println(err)
+				continue
 			}
 			fmt.Println("HEAD: ", ref.Hash().String())
 			refs := gitext.RepoRef(r)
