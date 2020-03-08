@@ -14,6 +14,8 @@ import (
 
 var (
 	argReposDir = flag.String("r",".gitdb","The dir story every thing")
+	repoNum     = 0
+	missNum     = 0
 )
 
 func main() {
@@ -46,6 +48,7 @@ func main() {
 			_, err := os.Stat(path)
 			if err!=nil {
 				fmt.Println(ShowName(owner,project),"miss")
+				missNum++
 			}
 			if rdb.IsBuild(owner,project) {
 				fmt.Println(ShowName(owner,project),"has build")
@@ -54,12 +57,15 @@ func main() {
 				fmt.Println(ShowName(owner,project),"clone local")
 			}
 			<- time.After(time.Second*1)
+			repoNum++
 		}
 	}
+	fmt.Printf("%8d/%d\n",repoNum-missNum,repoNum)
 }
 
 func ShowName(owner,project string) string {
 	var space = "                                                                        "
+	num := fmt.Sprintf("%8d ",repoNum)
 	if len(owner) > 25 {
 		owner = owner[:25]
 	} else {
@@ -70,5 +76,5 @@ func ShowName(owner,project string) string {
 	} else {
 		project = project + space[:35-len(project)]
 	}
-	return owner+":"+project
+	return num+owner+":"+project
 }
