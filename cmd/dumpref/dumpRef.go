@@ -34,7 +34,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	for k,v := range rec {
+	for _,v := range rec {
 		for _,name := range v {
 			repo := strings.Split(name,"/")
 			if len(repo)!=2 {
@@ -60,15 +60,15 @@ func main() {
 
 func ShowName(owner,project string) string {
 	var space = "                                                                        "
-	if len(owner) > 15 {
-		owner = owner[:15]
+	if len(owner) > 25 {
+		owner = owner[:25]
 	} else {
-		owner = ret[:15-len(owner)]+owner
+		owner = space[:25-len(owner)]+owner
 	}
-	if len(project) > 25 {
-		project = project[:15]
+	if len(project) > 35 {
+		project = project[:35]
 	} else {
-		project = project + ret[:25-len(project)]
+		project = project + space[:35-len(project)]
 	}
 	return owner+":"+project
 }
