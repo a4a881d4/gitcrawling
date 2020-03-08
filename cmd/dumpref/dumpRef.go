@@ -14,6 +14,7 @@ import (
 
 var (
 	argReposDir = flag.String("r",".gitdb","The dir story every thing")
+	argSleep    = flag.Int("s",1000,"sleep")
 	repoNum     = 0
 	missNum     = 0
 )
@@ -56,7 +57,7 @@ func main() {
 			if rdb.OK(owner,project) {
 				fmt.Println(ShowName(owner,project),"clone local")
 			}
-			<- time.After(time.Second*1)
+			<- time.After(time.Duration(*argSleep) * time.Millisecond)
 			repoNum++
 		}
 	}
