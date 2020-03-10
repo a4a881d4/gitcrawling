@@ -12,12 +12,12 @@ import (
 )
 
 func main() {
-	db, err := db.NewDB(os.Args[2])
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer db.Close()
+	// db, err := db.NewDB(os.Args[2])
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// defer db.Close()
 
 	for k:=1;k<67;k++ {
 		fn := fmt.Sprintf("%s/repo_%d.csv",os.Args[1],k)
@@ -51,10 +51,10 @@ func ProcessCVS(fn string, db *db.DB) {
 		}
 		fmt.Println(k, owner, project)
 		fmt.Println(r.String())
-		if k != 0 {
-			if err := db.PutRepo(owner, project, &r); err != nil {
-				fmt.Println(err)
-			}
-		}
+		// if k != 0 {
+		// 	if err := db.PutRepo(owner, project, &r); err != nil {
+		// 		fmt.Println(err)
+		// 	}
+		// }
 	}
 }
