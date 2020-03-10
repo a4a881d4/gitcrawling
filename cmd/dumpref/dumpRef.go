@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/a4a881d4/gitcrawling/db"
+	"github.com/a4a881d4/gitcrawling/gitext"
 )
 
 var (
@@ -30,7 +31,7 @@ func main() {
 			fmt.Println(err)
 		}
 	}
-	
+
 	rdb := db.NewRefDB(*argReposDir+"/refs")
 	
 	buf,err := ioutil.ReadFile(flag.Arg(0))
@@ -64,6 +65,16 @@ func main() {
 			}
 			if rdb.OK(owner,project) {
 				fmt.Println(ShowName(owner,project),"clone local")
+			} else {
+				fmt.Println(ShowName(owner,project),"maybe clone local, check")
+				refs,err := OpenAndRef(owner,project,*argReposDir)
+				if err != nil {
+					fmt.Println(ShowName(owner,project),"bad",path,"remove it")
+					os.RemoveAll(path)
+				} else {
+					rdb.PutRefSync(owner,project,refs)
+					dump(refs)
+				}
 			}
 			<- time.After(time.Duration(*argSleep) * time.Millisecond)
 			repoNum++
@@ -86,4 +97,16 @@ func ShowName(owner,project string) string {
 		project = project + space[:35-len(project)]
 	}
 	return num+owner+":"+project
+}
+
+func OpenAndRef(owner,project,ReposDir string) (ref []gitext.Ref,err error) {
+	path  := fmt.Sprintf("%s/repos/%s/%s",ReposDir,owner,project)
+	r,err := gitext.PlainOpen(path)
+	return gitext.RepoRef(r),err
+}
+
+func dump(ref []gitext.Ref) {
+	for k,v := range ref {
+		fmt.Println(k,":",v)
+	}
 }
