@@ -17,6 +17,7 @@ type DB struct {
 func Compact(dir string) error {
 	opts := &opt.Options{OpenFilesCacheCapacity: 5}
 	db, err := leveldb.OpenFile(dir, opts)
+	defer db.Close()
 	if err != nil {
 		return err
 	}
