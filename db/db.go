@@ -65,6 +65,7 @@ func(db *DB) GetDB() *leveldb.DB {
 // 	err = self.db.Put(keyRepo(owner, project), buf, opts)
 // 	return
 // }
+//
 // func (self *DB) Close() {
 // 	self.db.Close()
 // }
