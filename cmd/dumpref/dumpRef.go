@@ -59,23 +59,29 @@ func main() {
 			if err!=nil {
 				fmt.Println(ShowName(owner,project),"miss")
 				missNum++
-			}
-			if rdb.IsBuild(owner,project) {
-				fmt.Println(ShowName(owner,project),"has build")
-			}
-			if rdb.OK(owner,project) {
-				fmt.Println(ShowName(owner,project),"clone local")
+				if rdb.OK(owner,project) {
+					fmt.Println(ShowName(owner,project),"bad in db, remove it")
+					rdb.DelRef(owner,project)
+				}
 			} else {
-				fmt.Println(ShowName(owner,project),"maybe clone local, check")
-				refs,err := OpenAndRef(owner,project,*argReposDir)
-				if err != nil {
-					fmt.Println(ShowName(owner,project),"bad",path,"remove it")
-					os.RemoveAll(path)
+				if rdb.IsBuild(owner,project) {
+					fmt.Println(ShowName(owner,project),"has build")
+				}
+				if rdb.OK(owner,project) {
+					fmt.Println(ShowName(owner,project),"clone local")
 				} else {
-					rdb.PutRefSync(owner,project,refs)
-					dump(refs)
+					fmt.Println(ShowName(owner,project),"maybe clone local, check")
+					refs,err := OpenAndRef(owner,project,*argReposDir)
+					if err != nil {
+						fmt.Println(ShowName(owner,project),"bad",path,"remove it")
+						os.RemoveAll(path)
+					} else {
+						rdb.PutRefSync(owner,project,refs)
+						dump(refs)
+					}
 				}
 			}
+			
 			<- time.After(time.Duration(*argSleep) * time.Millisecond)
 			repoNum++
 		}
