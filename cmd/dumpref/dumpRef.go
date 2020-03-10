@@ -102,6 +102,9 @@ func ShowName(owner,project string) string {
 func OpenAndRef(owner,project,ReposDir string) (ref []gitext.Ref,err error) {
 	path  := fmt.Sprintf("%s/repos/%s/%s",ReposDir,owner,project)
 	r,err := gitext.PlainOpen(path)
+	if err != nil {
+		return []gitext.Ref{},err
+	}
 	return gitext.RepoRef(r),err
 }
 
