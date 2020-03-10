@@ -14,6 +14,15 @@ type DB struct {
 	db *leveldb.DB
 }
 
+func Compact(dir string) error {
+	opts := &opt.Options{OpenFilesCacheCapacity: 5}
+	db, err := leveldb.OpenFile(dir, opts)
+	if err != nil {
+		return err
+	}
+	return db.CompactRange(util.Range{nil,nil})
+}
+
 func NewDB(dir string) (*DB, error) {
 	opts := &opt.Options{OpenFilesCacheCapacity: 5}
 	db, err := leveldb.OpenFile(dir, opts)
