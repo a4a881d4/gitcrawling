@@ -1,9 +1,9 @@
 package db
 
 import (
-	"strings"
+	// "strings"
 
-	"github.com/a4a881d4/gitcrawling/gitext"
+	// "github.com/a4a881d4/gitcrawling/gitext"
 	// "github.com/ethereum/go-ethereum/rlp"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
