@@ -72,9 +72,10 @@ func main() {
 				} else {
 					fmt.Println(ShowName(owner,project),"maybe clone local, check")
 					refs,err := OpenAndRef(owner,project,*argReposDir)
-					if err != nil {
+					if err != nil || len(refs) == 0 {
 						fmt.Println(ShowName(owner,project),"bad",path,"remove it")
 						os.RemoveAll(path)
+						rdb.DelRef(owner,project)
 					} else {
 						rdb.PutRefSync(owner,project,refs)
 						dump(refs)
