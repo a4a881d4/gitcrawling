@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	argReposDir = flag.String("r",".gitdb","The dir story every thing")
+	argReposDir = flag.String("r",".gitdb","The dir story Repos")
+	argRefsDir  = flag.String("ref",".gitdb","The dir story Refs")
 	argSleep    = flag.Int("s",1000,"sleep")
 	argCompact  = flag.Bool("c",false,"Compact DB before dump")
 	repoNum     = 0
@@ -26,13 +27,13 @@ func main() {
 	var err error
 
 	if *argCompact {
-		err := db.Compact(*argReposDir+"/refs")
+		err := db.Compact(*argRefsDir+"/refs")
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
 
-	rdb := db.NewRefDB(*argReposDir+"/refs")
+	rdb := db.NewRefDB(*argRefsDir+"/refs")
 	
 	buf,err := ioutil.ReadFile(flag.Arg(0))
 	if err!=nil {
@@ -82,7 +83,6 @@ func main() {
 					}
 				}
 			}
-			
 			<- time.After(time.Duration(*argSleep) * time.Millisecond)
 			repoNum++
 		}

@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	argReposDir = flag.String("r",".gitdb","The dir story every thing")
+	argReposDir = flag.String("r",".gitdb","The dir story Repos")
+	argRefsDir  = flag.String("ref",".gitdb","The dir story Refs")
 	argForce    = flag.Bool("f",false,"force re clone")
 	argGithub   = flag.String("g","github.com","github server")
 )
