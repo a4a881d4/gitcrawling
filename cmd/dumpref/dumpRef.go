@@ -88,6 +88,7 @@ func main() {
 		}
 	}
 	fmt.Printf("%8d/%d\n",repoNum-missNum,repoNum)
+	rdb.Stop()
 }
 
 func ShowName(owner,project string) string {

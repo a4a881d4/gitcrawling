@@ -22,7 +22,7 @@ var (
 func main() {
 	flag.Parse()
 	
-	rdb := db.NewRefDB(*argReposDir+"/refs")
+	rdb := db.NewRefDB(*argRefsDir+"/refs")
 	
 	buf,err := ioutil.ReadFile(flag.Arg(0))
 	if err!=nil {
@@ -54,7 +54,11 @@ func main() {
 			path := fmt.Sprintf("%s/repos/%s/%s",*argReposDir,owner,project)
 			_, err := os.Stat(path)
 			if err == nil {
-				os.RemoveAll(path)
+				if *argForce {
+						os.RemoveAll(path)
+					} else {
+						continue
+					}				
 			}
 			r, err := gitext.PlainCloneFS(url,path)
 			if err != nil {
@@ -69,10 +73,11 @@ func main() {
 			}
 			fmt.Println("HEAD: ", ref.Hash().String())
 			refs := gitext.RepoRef(r)
-			rdb.PutRefSync(owner,project,refs)
+			rdb.PutRef(owner,project,refs)
 			dump(refs)
 		}
 	}
+	rdb.Stop()
 }
 
 func dump(ref []gitext.Ref) {
