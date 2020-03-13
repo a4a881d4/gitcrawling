@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"time"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -36,47 +37,54 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	for k,v := range rec {
-		fmt.Println("Process",k,"stars")
-		for num,name := range v {
-			repo := strings.Split(name,"/")
-			if len(repo)!=2 {
-				fmt.Println("error name",name)
-				continue
-			}
-			owner,project := repo[0],repo[1]
-			if rdb.OK(owner,project) {
-				dump(rdb.GetRef(owner,project))
-				continue
-			}
-			fmt.Println("Begin to Clone",owner,project,num)
-			url  := fmt.Sprintf("http://%s/%s/%s",*argGithub,owner,project)	
-			path := fmt.Sprintf("%s/repos/%s/%s",*argReposDir,owner,project)
-			_, err := os.Stat(path)
-			if err == nil {
-				if *argForce {
-					os.RemoveAll(path)
-				} else {
-					continue
-				}
-			}
-			r, err := gitext.PlainCloneFS(url,path)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-		
-			ref, err := r.Head()
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			fmt.Println("HEAD: ", ref.Hash().String())
-			refs := gitext.RepoRef(r)
-			rdb.PutRefSync(owner,project,refs)
-			dump(refs)
+	var names []string
+	for _,v := range rec {
+		for _,name := range v {
+			names = append(names,name)
 		}
 	}
+	rdb.Init(names)
+	var done = 0
+	for num,name := range names {
+		repo := strings.Split(name,"/")
+		if len(repo)!=2 {
+			fmt.Println("error name",name)
+			continue
+		}
+		owner,project := repo[0],repo[1]
+		if rdb.OK(owner,project) {
+			dump(rdb.GetRef(owner,project))
+			continue
+		}
+		fmt.Println("Begin to Clone",owner,project,num,done,time.Now())
+		done++
+		url  := fmt.Sprintf("http://%s/%s/%s",*argGithub,owner,project)	
+		path := fmt.Sprintf("%s/repos/%s/%s",*argReposDir,owner,project)
+		_, err := os.Stat(path)
+		if err == nil {
+			if *argForce {
+				os.RemoveAll(path)
+			} else {
+				continue
+			}
+		}
+		r, err := gitext.PlainCloneFS(url,path)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+	
+		ref, err := r.Head()
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		fmt.Println("HEAD: ", ref.Hash().String())
+		refs := gitext.RepoRef(r)
+		rdb.PutRef(owner,project,refs)
+		dump(refs)
+	}
+	rdb.Stop()
 }
 
 func dump(ref []gitext.Ref) {

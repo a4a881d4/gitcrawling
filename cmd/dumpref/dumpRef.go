@@ -47,47 +47,54 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	var names []string
 	for _,v := range rec {
 		for _,name := range v {
-			repo := strings.Split(name,"/")
-			if len(repo)!=2 {
-				fmt.Println("error name",name)
-				continue
-			}
-			owner,project := repo[0],repo[1]
-			path := fmt.Sprintf("%s/repos/%s/%s",*argReposDir,owner,project)
-			_, err := os.Stat(path)
-			if err!=nil {
-				fmt.Println(ShowName(owner,project),"miss")
-				missNum++
-				if rdb.OK(owner,project) {
-					fmt.Println(ShowName(owner,project),"bad in db, remove it")
-					rdb.DelRef(owner,project)
-				}
-			} else {
-				if rdb.IsBuild(owner,project) {
-					fmt.Println(ShowName(owner,project),"has build")
-				}
-				if rdb.OK(owner,project) {
-					fmt.Println(ShowName(owner,project),"clone local")
-				} else {
-					fmt.Println(ShowName(owner,project),"maybe clone local, check")
-					refs,err := OpenAndRef(owner,project,*argReposDir)
-					if err != nil || len(refs) == 0 {
-						fmt.Println(ShowName(owner,project),"bad",path,"remove it")
-						os.RemoveAll(path)
-						rdb.DelRef(owner,project)
-					} else {
-						rdb.PutRefSync(owner,project,refs)
-						dump(refs)
-					}
-				}
-			}
-			<- time.After(time.Duration(*argSleep) * time.Millisecond)
-			repoNum++
+			names = append(names,name)
 		}
 	}
+	rdb.Init(names)
+
+	for _,name := range names {
+		repo := strings.Split(name,"/")
+		if len(repo)!=2 {
+			fmt.Println("error name",name)
+			continue
+		}
+		owner,project := repo[0],repo[1]
+		path := fmt.Sprintf("%s/repos/%s/%s",*argReposDir,owner,project)
+		_, err := os.Stat(path)
+		if err!=nil {
+			fmt.Println(ShowName(owner,project),"miss")
+			missNum++
+			if rdb.OK(owner,project) {
+				fmt.Println(ShowName(owner,project),"bad in db, remove it")
+				rdb.DelRef(owner,project)
+			}
+		} else {
+			if rdb.IsBuild(owner,project) {
+				fmt.Println(ShowName(owner,project),"has build")
+			}
+			if rdb.OK(owner,project) {
+				fmt.Println(ShowName(owner,project),"clone local")
+			} else {
+				fmt.Println(ShowName(owner,project),"maybe clone local, check")
+				refs,err := OpenAndRef(owner,project,*argReposDir)
+				if err != nil || len(refs) == 0 {
+					fmt.Println(ShowName(owner,project),"bad",path,"remove it")
+					os.RemoveAll(path)
+					rdb.DelRef(owner,project)
+				} else {
+					rdb.PutRefSync(owner,project,refs)
+					dump(refs)
+				}
+			}
+		}
+		<- time.After(time.Duration(*argSleep) * time.Millisecond)
+		repoNum++
+	}
 	fmt.Printf("%8d/%d\n",repoNum-missNum,repoNum)
+	rdb.Stop()
 }
 
 func ShowName(owner,project string) string {

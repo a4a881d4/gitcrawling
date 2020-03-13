@@ -12,12 +12,16 @@ type RefDB struct {
 	Path string
 	db   *leveldb.DB
 	Retry int
+	cache map[string]*gitext.RefRecord
+	dirty []string
 }
 
 func NewRefDB(path string) *RefDB {
 	return &RefDB{
 		Path:path,
 		Retry:10,
+		cache : make(map[string]*gitext.RefRecord),
+		dirty : make([]string,20),
 	}
 }
 
@@ -51,8 +55,11 @@ func(self *RefDB) Close() {
 	}
 }
 
+func skeyRef(owner, project string) string {
+	return "r/" + owner + "/" + project
+}
 func keyRef(owner, project string) []byte {
-	return []byte("r/" + owner + "/" + project)
+	return []byte(skeyRef(owner, project))
 }
 
 func(self *RefDB) PutRefSync(owner, project string, r []gitext.Ref) (err error) {
@@ -60,6 +67,30 @@ func(self *RefDB) PutRefSync(owner, project string, r []gitext.Ref) (err error) 
 	opts := &opt.WriteOptions{Sync: true}
 	err = self.Open().Put(keyRef(owner, project), gitext.NewRefRecord(r).DecodeRef(), opts)
 	return
+}
+
+func(self *RefDB) Stop() {
+	self.flush()
+}
+
+func(self *RefDB) flush() {
+	defer self.Close()
+	opts := &opt.WriteOptions{Sync: true}
+	self.Open()
+	for _,k := range self.dirty {
+		self.db.Put([]byte(k),self.cache[k].DecodeRef(),opts)
+	}
+	self.dirty = make([]string,20)
+}
+
+func(self *RefDB) PutRef(owner, project string, r []gitext.Ref) (err error) {
+	k := skeyRef(owner, project)
+	self.cache[k] = gitext.NewRefRecord(r)
+	self.dirty = append(self.dirty,k)
+	if len(self.dirty)>20 {
+		self.flush()
+	}
+	return nil
 }
 
 func(self *RefDB) SetBuild(owner, project string, ir []gitext.Ref) (r []gitext.Ref,err error) {
@@ -74,16 +105,31 @@ func(self *RefDB) SetBuild(owner, project string, ir []gitext.Ref) (r []gitext.R
 }
 
 func(self *RefDB) HasRef(owner, project string) (bool, error) {
-	defer self.Close()
-	return self.Open().Has(keyRef(owner, project),nil)
+	k := skeyRef(owner, project)
+	if _,ok := self.cache[k];ok {
+		return ok,nil
+	}
+	if _,err := self.getRef(owner, project); err != nil {
+		return false,err
+	} else {
+		return true,nil
+	}
 }
 
 func(self *RefDB) DelRef(owner, project string) error {
+	k := skeyRef(owner, project)
+	if _,ok := self.cache[k];ok {
+		delete(self.cache,k)
+	}
 	defer self.Close()
 	return self.Open().Delete(keyRef(owner, project),nil)
 }
 
 func (self *RefDB) GetRef(owner, project string) []gitext.Ref {
+	k := skeyRef(owner, project)
+	if r,ok := self.cache[k];ok {
+		return r.Refs
+	}
 	record,err := self.getRef(owner, project)
 	if err != nil {
 		return []gitext.Ref{}
@@ -93,15 +139,23 @@ func (self *RefDB) GetRef(owner, project string) []gitext.Ref {
 
 func (self *RefDB) getRef(owner, project string) (*gitext.RefRecord, error) {
 	defer self.Close()
+	k := skeyRef(owner, project)
 	buf, err := self.Open().Get(keyRef(owner, project), nil)
 	if err != nil {
 		return nil, err
 	}
 	record := gitext.EncodeRef(buf)
+	if err != nil {
+		self.cache[k]=record
+	}
 	return record, err
 }
 
 func(self *RefDB) OK(owner, project string) bool {
+	k := skeyRef(owner, project)
+	if r,ok := self.cache[k];ok {
+		return r.OK()
+	}
 	r,err := self.getRef(owner, project)
 	if err!=nil {
 		return false
@@ -111,6 +165,10 @@ func(self *RefDB) OK(owner, project string) bool {
 }
 
 func(self *RefDB) RemoteOK(owner, project string) bool {
+	k := skeyRef(owner, project)
+	if r,ok := self.cache[k];ok {
+		return r.RemoteOK()
+	}
 	r,err := self.getRef(owner, project)
 	if err!=nil {
 		return true
@@ -120,10 +178,27 @@ func(self *RefDB) RemoteOK(owner, project string) bool {
 }
 
 func(self *RefDB) IsBuild(owner, project string) bool {
+	k := skeyRef(owner, project)
+	if r,ok := self.cache[k];ok {
+		return r.IsBuild()
+	}
 	r,err := self.getRef(owner, project)
 	if err!=nil {
 		return false
 	} else {
 		return r.IsBuild()
+	}
+}
+
+func(self *RefDB) Init(r []string) {
+	defer self.Close()
+	self.Open()
+	for _,v := range r {
+		k := "r/" +v
+		buf, err := self.db.Get([]byte(k), nil)
+		if err == nil {
+			record := gitext.EncodeRef(buf)
+			self.cache[k]=record
+		}
 	}
 }
