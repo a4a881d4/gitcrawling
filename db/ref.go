@@ -80,13 +80,15 @@ func (self *RefDB) Stop() {
 }
 
 func (self *RefDB) flush() {
-	defer self.Close()
-	opts := &opt.WriteOptions{Sync: true}
-	self.Open()
-	for _, k := range self.dirty {
-		self.db.Put([]byte(k), self.cache[k].DecodeRef(), opts)
+	if len(self.dirty) > 0 {
+		defer self.Close()
+		opts := &opt.WriteOptions{Sync: true}
+		self.Open()
+		for _, k := range self.dirty {
+			self.db.Put([]byte(k), self.cache[k].DecodeRef(), opts)
+		}
+		self.dirty = make([]string, 20)
 	}
-	self.dirty = make([]string, 20)
 }
 
 func (self *RefDB) PutRef(owner, project string, r []gitext.Ref) (err error) {
@@ -104,8 +106,12 @@ func (self *RefDB) SetBuild(owner, project string, ir []gitext.Ref) (r []gitext.
 	if len(ir) == 0 {
 		ir = self.GetRef(owner, project)
 	}
-	opts := &opt.WriteOptions{Sync: true}
-	err = self.Open().Put(keyRef(owner, project), gitext.NewBuildRecord(r).DecodeRef(), opts)
+	k := skeyRef(owner, project)
+	self.cache[k] = gitext.NewBuildRecord(r)
+	self.dirty = append(self.dirty, k)
+	if len(self.dirty) > 20 {
+		self.flush()
+	}
 	r = ir
 	return
 }
