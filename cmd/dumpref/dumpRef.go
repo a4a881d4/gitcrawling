@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	argReposDir = flag.String("r",".gitdb","The dir story Repos")
-	argRefsDir  = flag.String("ref",".gitdb","The dir story Refs")
-	argSleep    = flag.Int("s",1000,"sleep")
-	argCompact  = flag.Bool("c",false,"Compact DB before dump")
+	argReposDir = flag.String("r", ".gitdb", "The dir story Repos")
+	argRefsDir  = flag.String("ref", ".gitdb", "The dir story Refs")
+	argSleep    = flag.Int("s", 1000, "sleep")
+	argCompact  = flag.Bool("c", false, "Compact DB before dump")
 	repoNum     = 0
 	missNum     = 0
 )
@@ -27,103 +27,103 @@ func main() {
 	var err error
 
 	if *argCompact {
-		err := db.Compact(*argRefsDir+"/refs")
+		err := db.Compact(*argRefsDir + "/refs")
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
 
-	rdb := db.NewRefDB(*argRefsDir+"/refs")
-	
-	buf,err := ioutil.ReadFile(flag.Arg(0))
-	if err!=nil {
+	rdb := db.NewRefDB(*argRefsDir + "/refs")
+
+	buf, err := ioutil.ReadFile(flag.Arg(0))
+	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	var rec = make(map[string][]string)
-	err = json.Unmarshal(buf,&rec)
-	if err!=nil {
+	err = json.Unmarshal(buf, &rec)
+	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	var names []string
-	for _,v := range rec {
-		for _,name := range v {
-			names = append(names,name)
+	for _, v := range rec {
+		var names []string
+		for _, name := range v {
+			names = append(names, name)
 		}
-	}
-	rdb.Init(names)
-
-	for _,name := range names {
-		repo := strings.Split(name,"/")
-		if len(repo)!=2 {
-			fmt.Println("error name",name)
-			continue
-		}
-		owner,project := repo[0],repo[1]
-		path := fmt.Sprintf("%s/repos/%s/%s",*argReposDir,owner,project)
-		_, err := os.Stat(path)
-		if err!=nil {
-			fmt.Println(ShowName(owner,project),"miss")
-			missNum++
-			if rdb.OK(owner,project) {
-				fmt.Println(ShowName(owner,project),"bad in db, remove it")
-				rdb.DelRef(owner,project)
+		rdb.Init(names)
+		rdb.NoDB()
+		for _, name := range names {
+			repo := strings.Split(name, "/")
+			if len(repo) != 2 {
+				fmt.Println("error name", name)
+				continue
 			}
-		} else {
-			if rdb.IsBuild(owner,project) {
-				fmt.Println(ShowName(owner,project),"has build")
-			}
-			if rdb.OK(owner,project) {
-				fmt.Println(ShowName(owner,project),"clone local")
+			owner, project := repo[0], repo[1]
+			path := fmt.Sprintf("%s/repos/%s/%s", *argReposDir, owner, project)
+			_, err := os.Stat(path)
+			if err != nil {
+				fmt.Println(ShowName(owner, project), "miss")
+				missNum++
+				if rdb.OK(owner, project) {
+					fmt.Println(ShowName(owner, project), "bad in db, remove it")
+					rdb.DelRef(owner, project)
+				}
 			} else {
-				fmt.Println(ShowName(owner,project),"maybe clone local, check")
-				refs,err := OpenAndRef(owner,project,*argReposDir)
-				if err != nil || len(refs) == 0 {
-					fmt.Println(ShowName(owner,project),"bad",path,"remove it")
-					os.RemoveAll(path)
-					rdb.DelRef(owner,project)
+				if rdb.IsBuild(owner, project) {
+					fmt.Println(ShowName(owner, project), "has build")
+				}
+				if rdb.OK(owner, project) {
+					fmt.Println(ShowName(owner, project), "clone local")
 				} else {
-					rdb.PutRefSync(owner,project,refs)
-					dump(refs)
+					fmt.Println(ShowName(owner, project), "maybe clone local, check")
+					refs, err := OpenAndRef(owner, project, *argReposDir)
+					if err != nil || len(refs) == 0 {
+						fmt.Println(ShowName(owner, project), "bad", path, "remove it")
+						os.RemoveAll(path)
+						rdb.DelRef(owner, project)
+					} else {
+						rdb.PutRefSync(owner, project, refs)
+						dump(refs)
+					}
 				}
 			}
+			<-time.After(time.Duration(*argSleep) * time.Millisecond)
+			repoNum++
 		}
-		<- time.After(time.Duration(*argSleep) * time.Millisecond)
-		repoNum++
+		rdb.Stop()
 	}
-	fmt.Printf("%8d/%d\n",repoNum-missNum,repoNum)
-	rdb.Stop()
+	fmt.Printf("%8d/%d\n", repoNum-missNum, repoNum)
 }
 
-func ShowName(owner,project string) string {
+func ShowName(owner, project string) string {
 	var space = "                                                                        "
-	num := fmt.Sprintf("%8d ",repoNum)
+	num := fmt.Sprintf("%8d ", repoNum)
 	if len(owner) > 25 {
 		owner = owner[:25]
 	} else {
-		owner = space[:25-len(owner)]+owner
+		owner = space[:25-len(owner)] + owner
 	}
 	if len(project) > 35 {
 		project = project[:35]
 	} else {
 		project = project + space[:35-len(project)]
 	}
-	return num+owner+":"+project
+	return num + owner + ":" + project
 }
 
-func OpenAndRef(owner,project,ReposDir string) (ref []gitext.Ref,err error) {
-	path  := fmt.Sprintf("%s/repos/%s/%s",ReposDir,owner,project)
-	r,err := gitext.PlainOpen(path)
+func OpenAndRef(owner, project, ReposDir string) (ref []gitext.Ref, err error) {
+	path := fmt.Sprintf("%s/repos/%s/%s", ReposDir, owner, project)
+	r, err := gitext.PlainOpen(path)
 	if err != nil {
-		return []gitext.Ref{},err
+		return []gitext.Ref{}, err
 	}
-	return gitext.RepoRef(r),err
+	return gitext.RepoRef(r), err
 }
 
 func dump(ref []gitext.Ref) {
-	for k,v := range ref {
-		fmt.Println(k,":",v)
+	for k, v := range ref {
+		fmt.Println(k, ":", v)
 	}
 }
