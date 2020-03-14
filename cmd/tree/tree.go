@@ -29,6 +29,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	defer tdb.Close()
 	if *argDump {
 		prefix := "t/"
 		if flag.NArg() == 1 {
@@ -81,7 +82,6 @@ func main() {
 			}
 			repoNum++
 		}
-		tdb.EndSession()
 	}
 	var batch []string
 	for _, v := range rec {

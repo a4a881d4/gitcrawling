@@ -13,16 +13,22 @@ func NewDB(path string) (*DB, error) {
 	db, err := badger.Open(badger.DefaultOptions(path))
 	return &DB{db, nil}, err
 }
-
+func (self *DB) Close() {
+	if self.txn != nil {
+		self.txn.Commit()
+		self.txn.Discard()
+	}
+	self.db.Close()
+}
 func (self *DB) NewSession() {
 	self.txn = self.db.NewTransaction(true)
 }
 
 func (self *DB) Put(k, v []byte) (err error) {
-	if err = self.txn.Set([]byte(k), []byte(v)); err == badger.ErrTxnTooBig {
+	if err = self.txn.Set(k, v); err == badger.ErrTxnTooBig {
 		_ = self.txn.Commit()
 		self.txn = self.db.NewTransaction(true)
-		err = self.txn.Set([]byte(k), []byte(v))
+		err = self.txn.Set(k, v)
 	}
 	return
 }
