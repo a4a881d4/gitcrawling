@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/a4a881d4/gitcrawling/gitext"
 	. "github.com/a4a881d4/gitcrawling/ref"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -19,15 +20,14 @@ func main() {
 	r, err := git.PlainOpen(directory)
 	CheckIfError(err)
 
-	// it,_ := r.TreeObjects()
-	// it.ForEach(func(t *object.Tree) error{
-	// 	for k,v := range t.Entries {
-	// 		fmt.Println(k,v.Name,v.Mode)
-	// 	}
-	// 	fmt.Println(t.Type())
-	// 	return nil
-	// 	})
-
+	all, err := gitext.TreeFlat(r)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		for k, v := range all {
+			fmt.Println(format(k, v))
+		}
+	}
 	ref, err := r.Head()
 	CheckIfError(err)
 	// ... retrieving the commit object
@@ -54,6 +54,10 @@ func main() {
 			fmt.Println(err)
 			break
 		}
-		fmt.Printf("name:%s hash:%x mode:%s\n", name, entry.Hash, entry.Mode.String())
+		fmt.Printf("%s: %s %s\n", entry.Hash.String(), entry.Mode.String(), name)
 	}
+}
+
+func format(k int, v string) string {
+	return fmt.Sprintf("%5d ", k) + v
 }

@@ -7,17 +7,15 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/a4a881d4/gitcrawling/db"
+	"github.com/a4a881d4/gitcrawling/badgerdb"
 	"github.com/a4a881d4/gitcrawling/gitext"
 )
 
 var (
-	argReposDir = flag.String("r", ".gitdb", "The dir story Repos")
-	argRefsDir  = flag.String("ref", ".gitdb", "The dir story Refs")
-	argSleep    = flag.Int("s", 1000, "sleep")
-	argCompact  = flag.Bool("c", false, "Compact DB before dump")
+	argReposDir = flag.String("r", ".", "The dir story Repos")
+	argDir      = flag.String("t", "../.gitdb", "The dir story Trees")
+	argDump     = flag.Bool("d", false, "dump Trees")
 	repoNum     = 0
 	missNum     = 0
 )
@@ -26,14 +24,23 @@ func main() {
 	flag.Parse()
 	var err error
 
-	if *argCompact {
-		err := db.Compact(*argRefsDir + "/refs")
-		if err != nil {
-			fmt.Println(err)
-		}
+	tdb, err := badgerdb.NewDB(*argDir + "/trees")
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
-
-	rdb := db.NewRefDB(*argRefsDir + "/refs")
+	if *argDump {
+		prefix := "t/"
+		if flag.NArg() == 1 {
+			prefix += flag.Arg(0)
+		}
+		tdb.ForEach([]byte(prefix), func(k, v []byte) error {
+			fmt.Println(string(k[2:]))
+			fmt.Println(string(v))
+			return nil
+		})
+		return
+	}
 
 	buf, err := ioutil.ReadFile(flag.Arg(0))
 	if err != nil {
@@ -47,9 +54,10 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	var doSome = func(names []string) {
-		rdb.Init(names)
-		rdb.NoDB()
+
+	var putSome = func(names []string) {
+		tdb.NewSession()
+		defer tdb.EndSession()
 		for _, name := range names {
 			repo := strings.Split(name, "/")
 			if len(repo) != 2 {
@@ -62,33 +70,18 @@ func main() {
 			if err != nil {
 				fmt.Println(ShowName(owner, project), "miss")
 				missNum++
-				if rdb.OK(owner, project) {
-					fmt.Println(ShowName(owner, project), "bad in db, remove it")
-					rdb.DelRef(owner, project)
-				}
 			} else {
-				if rdb.IsBuild(owner, project) {
-					fmt.Println(ShowName(owner, project), "has build")
-				}
-				if rdb.OK(owner, project) {
-					fmt.Println(ShowName(owner, project), "clone local")
+				fmt.Println(ShowName(owner, project), "check")
+				trees, err := OpenAndTree(owner, project, *argReposDir)
+				if err != nil {
+					fmt.Println(ShowName(owner, project), err)
 				} else {
-					fmt.Println(ShowName(owner, project), "maybe clone local, check")
-					refs, err := OpenAndRef(owner, project, *argReposDir)
-					if err != nil || len(refs) == 0 {
-						fmt.Println(ShowName(owner, project), "bad", path, "remove it")
-						os.RemoveAll(path)
-						rdb.DelRef(owner, project)
-					} else {
-						rdb.PutRefSync(owner, project, refs)
-						dump(refs)
-					}
+					tdb.PutTree(owner, project, trees)
 				}
 			}
-			<-time.After(time.Duration(*argSleep) * time.Millisecond)
 			repoNum++
 		}
-		rdb.Stop()
+		tdb.EndSession()
 	}
 	var batch []string
 	for _, v := range rec {
@@ -96,12 +89,12 @@ func main() {
 			batch = append(batch, name)
 		}
 		if len(batch) > 2048 {
-			doSome(batch)
+			putSome(batch)
 			batch = []string{}
 		}
 	}
 	if len(batch) > 0 {
-		doSome(batch)
+		putSome(batch)
 	}
 	fmt.Printf("%8d/%d\n", repoNum-missNum, repoNum)
 }
@@ -122,13 +115,13 @@ func ShowName(owner, project string) string {
 	return num + owner + ":" + project
 }
 
-func OpenAndRef(owner, project, ReposDir string) (ref []gitext.Ref, err error) {
+func OpenAndTree(owner, project, ReposDir string) (ref []string, err error) {
 	path := fmt.Sprintf("%s/repos/%s/%s", ReposDir, owner, project)
 	r, err := gitext.PlainOpen(path)
 	if err != nil {
-		return []gitext.Ref{}, err
+		return []string{}, err
 	}
-	return gitext.RepoRef(r), err
+	return gitext.TreeFlat(r)
 }
 
 func dump(ref []gitext.Ref) {

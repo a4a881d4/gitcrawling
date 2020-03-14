@@ -219,10 +219,11 @@ func (self *RefDB) IsBuild(owner, project string) bool {
 }
 
 func (self *RefDB) Init(r []string) {
+	self.flush()
 	defer self.Close()
 	self.Open()
 	self.db.CompactRange(util.Range{nil, nil})
-	self.flush()
+
 	self.cache = make(map[string]*gitext.RefRecord)
 	for _, v := range r {
 		k := "r/" + v
