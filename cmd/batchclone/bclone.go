@@ -53,7 +53,7 @@ func main() {
 			}
 			owner, project := repo[0], repo[1]
 			if rdb.OK(owner, project) {
-				dump(rdb.GetRef(owner, project))
+				// dump(rdb.GetRef(owner, project))
 				continue
 			}
 			fmt.Println("Begin to Clone", owner, project, num, done, time.Now())
