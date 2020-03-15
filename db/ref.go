@@ -24,7 +24,7 @@ func NewRefDB(path string) *RefDB {
 		Path:      path,
 		Retry:     10,
 		cache:     make(map[string]*gitext.RefRecord),
-		dirty:     make([]string, 20),
+		dirty:     make([]string, 0),
 		withCache: true,
 	}
 }
@@ -37,12 +37,12 @@ func (self *RefDB) open(retry int) *leveldb.DB {
 		self.db = nil
 		return self.db
 	}
-	opts := &opt.Options{OpenFilesCacheCapacity: 5}
+	opts := &opt.Options{}
 	db, err := leveldb.OpenFile(self.Path, opts)
 	if err != nil {
 		self.db = nil
 		<-time.After(time.Duration(1<<(8+retry)) * time.Millisecond)
-		fmt.Println("Retry Open", retry)
+		fmt.Println("Retry Open", retry, err)
 		return self.open(retry + 1)
 	}
 	self.db = db
@@ -84,11 +84,14 @@ func (self *RefDB) flush() {
 	if len(self.dirty) > 0 {
 		defer self.Close()
 		opts := &opt.WriteOptions{Sync: true}
+		fmt.Println("flush open db")
+		fmt.Println(self.dirty, len(self.dirty))
 		self.Open()
+		fmt.Println("flush open done")
 		for _, k := range self.dirty {
 			self.db.Put([]byte(k), self.cache[k].DecodeRef(), opts)
 		}
-		self.dirty = make([]string, 20)
+		self.dirty = make([]string, 0)
 	}
 }
 
@@ -220,8 +223,8 @@ func (self *RefDB) IsBuild(owner, project string) bool {
 
 func (self *RefDB) Init(r []string) {
 	self.flush()
-	defer self.Close()
 	self.Open()
+	defer self.Close()
 	self.db.CompactRange(util.Range{nil, nil})
 
 	self.cache = make(map[string]*gitext.RefRecord)

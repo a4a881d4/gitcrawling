@@ -1,4 +1,5 @@
 package gitext
+
 import (
 	"bufio"
 	"bytes"
@@ -25,7 +26,7 @@ import (
 // func NewGlobeStorage(lfs,gfs billy.Filesystem) *GlobeStorage {
 // 	local := filesystem.NewStorage(lfs,cache.NewObjectLRUDefault())
 // 	G     := filesystem.NewStorage(gfs,cache.NewObjectLRUDefault())
-	
+
 // 	// G.ReferenceStorage = local.ReferenceStorage
 // 	// G.IndexStorage     = local.IndexStorage
 // 	G.ShallowStorage   = local.ShallowStorage
@@ -42,29 +43,29 @@ func PlainClone(url string) (*git.Repository, error) {
 	o := &git.CloneOptions{
 		URL:               url,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
-		Progress: os.Stdout,
+		Progress:          os.Stdout,
 	}
 
 	storage := memory.NewStorage()
-	return git.Clone(storage,nil,o)
+	return git.Clone(storage, nil, o)
 }
 
-func PlainCloneFS(url,path string) (*git.Repository, error) {
+func PlainCloneFS(url, path string) (*git.Repository, error) {
 	o := &git.CloneOptions{
 		URL:               url,
-		Depth: 1,
+		Depth:             1,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
-		Progress: os.Stdout,
+		Progress:          os.Stdout,
 	}
-	
+
 	token := os.Getenv("GITHUB_AUTH_TOKEN")
 	if token != "" {
-		auth  := http.TokenAuth{Token:token}
+		auth := http.TokenAuth{Token: token}
 		o.Auth = &auth
 	}
-	return git.PlainClone(path,true,o)
+	return git.PlainClone(path, true, o)
 }
-func SetEncodedObject(dir *dotgit.DotGit,o plumbing.EncodedObject) (h plumbing.Hash, err error) {
+func SetEncodedObject(dir *dotgit.DotGit, o plumbing.EncodedObject) (h plumbing.Hash, err error) {
 	if o.Type() == plumbing.OFSDeltaObject || o.Type() == plumbing.REFDeltaObject {
 		return plumbing.ZeroHash, plumbing.ErrInvalidType
 	}
@@ -96,10 +97,10 @@ func SetEncodedObject(dir *dotgit.DotGit,o plumbing.EncodedObject) (h plumbing.H
 
 func EncodedObject(o plumbing.EncodedObject) (h plumbing.Hash, blob []byte, err error) {
 	if o.Type() == plumbing.OFSDeltaObject || o.Type() == plumbing.REFDeltaObject {
-		return plumbing.ZeroHash,[]byte{},plumbing.ErrInvalidType
+		return plumbing.ZeroHash, []byte{}, plumbing.ErrInvalidType
 	}
 
-	b  := bytes.NewBuffer(make([]byte, 0))
+	b := bytes.NewBuffer(make([]byte, 0))
 	bw := bufio.NewWriter(b)
 	ow := objfile.NewWriter(bw)
 
@@ -107,18 +108,36 @@ func EncodedObject(o plumbing.EncodedObject) (h plumbing.Hash, blob []byte, err 
 
 	or, err := o.Reader()
 	if err != nil {
-		return plumbing.ZeroHash,[]byte{}, err
+		return plumbing.ZeroHash, []byte{}, err
 	}
 
 	defer ioutil.CheckClose(or, &err)
 
 	if err = ow.WriteHeader(o.Type(), o.Size()); err != nil {
-		return plumbing.ZeroHash,[]byte{}, err
+		return plumbing.ZeroHash, []byte{}, err
 	}
 
 	if _, err = io.Copy(ow, or); err != nil {
-		return plumbing.ZeroHash,[]byte{}, err
+		return plumbing.ZeroHash, []byte{}, err
 	}
 
-	return o.Hash(),b.Bytes(),err
+	return o.Hash(), b.Bytes(), err
+}
+func EncodedTree(o plumbing.EncodedObject) (blob []byte, err error) {
+
+	b := bytes.NewBuffer(make([]byte, 0))
+	bw := bufio.NewWriter(b)
+
+	or, err := o.Reader()
+	if err != nil {
+		return []byte{}, err
+	}
+
+	defer ioutil.CheckClose(or, &err)
+
+	if _, err = io.Copy(bw, or); err != nil {
+		return []byte{}, err
+	}
+
+	return b.Bytes(), err
 }

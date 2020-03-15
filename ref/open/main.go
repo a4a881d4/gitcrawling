@@ -56,6 +56,7 @@ func main() {
 		}
 		fmt.Printf("%s: %s %s\n", entry.Hash.String(), entry.Mode.String(), name)
 	}
+	fmt.Println(commit.TreeHash.String())
 }
 
 func format(k int, v string) string {
