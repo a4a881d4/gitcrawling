@@ -2,10 +2,7 @@ package main
 
 import (
 	"encoding/hex"
-	"encoding/json"
-	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -61,19 +58,6 @@ func Raw() {
 	}
 	defer rdb.Close()
 
-	buf, err := ioutil.ReadFile(flag.Arg(0))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	var rec = make(map[string][]string)
-	err = json.Unmarshal(buf, &rec)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
 	var putSome = func(names []string) {
 		tdb.NewSession()
 		defer tdb.EndSession()
@@ -107,18 +91,6 @@ func Raw() {
 			repoNum++
 		}
 	}
-	var batch []string
-	for _, v := range rec {
-		for _, name := range v {
-			batch = append(batch, name)
-		}
-		if len(batch) > 2048 {
-			putSome(batch)
-			batch = []string{}
-		}
-	}
-	if len(batch) > 0 {
-		putSome(batch)
-	}
+	batchDo(putSome)
 	fmt.Printf("%8d/%d\n", repoNum-missNum, repoNum)
 }

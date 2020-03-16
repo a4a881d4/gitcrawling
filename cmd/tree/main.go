@@ -22,6 +22,8 @@ func main() {
 		ReadDB(flag.Arg(0))
 	case "commit":
 		dumpCommit()
+	case "zip":
+		Zip()
 	default:
 		Flat()
 	}

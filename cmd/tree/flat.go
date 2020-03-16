@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -31,19 +29,6 @@ func Flat() {
 			fmt.Println(string(v))
 			return nil
 		})
-		return
-	}
-
-	buf, err := ioutil.ReadFile(flag.Arg(0))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	var rec = make(map[string][]string)
-	err = json.Unmarshal(buf, &rec)
-	if err != nil {
-		fmt.Println(err)
 		return
 	}
 
@@ -74,19 +59,7 @@ func Flat() {
 			repoNum++
 		}
 	}
-	var batch []string
-	for _, v := range rec {
-		for _, name := range v {
-			batch = append(batch, name)
-		}
-		if len(batch) > 2048 {
-			putSome(batch)
-			batch = []string{}
-		}
-	}
-	if len(batch) > 0 {
-		putSome(batch)
-	}
+	batchDo(putSome)
 	fmt.Printf("%8d/%d\n", repoNum-missNum, repoNum)
 }
 
