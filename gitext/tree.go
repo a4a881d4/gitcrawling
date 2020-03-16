@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/url"
+	"strings"
 
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -46,15 +48,46 @@ func TreeFlat(r *git.Repository) ([]string, error) {
 	}
 }
 
-func Trees(r *git.Repository, cb func(k, v []byte) error) error {
+func remoteUrl(r *git.Repository) (string, error) {
+	config, err := r.Storer.Config()
+	if err != nil {
+		return "", err
+	}
+
+	remote, ok := config.Remotes["origin"]
+	if !ok {
+		return "", fmt.Errorf("not origin in remote")
+	}
+
+	if len(remote.URLs) == 0 {
+		return "", fmt.Errorf("not remote url")
+	}
+
+	URL := remote.URLs[0]
+	URL = strings.Replace(URL, "github.com.cnpmjs.org", "github.com", -1)
+	u, err := url.Parse(URL)
+	if err != nil {
+		return "", err
+	}
+
+	return u.Hostname() + "/" + u.Path, nil
+}
+
+func Trees(r *git.Repository, tcb, rcb func(k, v []byte) error) error {
 	refs, err := r.Storer.IterReferences()
 	if err != nil {
 		return err
 	}
+	remote, err := remoteUrl(r)
+	if err != nil {
+		return err
+	}
+
 	seen := make(map[plumbing.Hash]bool)
 	var alltree []plumbing.Hash
 	err = refs.ForEach(func(ref *plumbing.Reference) error {
-		fmt.Println(ref.String())
+		key := remote + "/" + ref.Name().String()
+		fmt.Println(key)
 		if ref.Hash().IsZero() {
 			return nil
 		}
@@ -62,7 +95,10 @@ func Trees(r *git.Repository, cb func(k, v []byte) error) error {
 		if err != nil {
 			return err
 		}
-
+		err = rcb([]byte(key), commit.TreeHash[:])
+		if err != nil {
+			return err
+		}
 		alltree = append(alltree, commit.TreeHash)
 		tree, err := r.TreeObject(commit.TreeHash)
 		if err != nil {
@@ -97,7 +133,7 @@ func Trees(r *git.Repository, cb func(k, v []byte) error) error {
 			return err
 		}
 
-		err = cb(h[:], b)
+		err = tcb(h[:], b)
 		if err != nil {
 			return err
 		}
