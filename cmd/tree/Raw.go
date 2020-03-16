@@ -98,7 +98,7 @@ func Raw() {
 				if err != nil {
 					fmt.Println(ShowName(owner, project), err)
 				} else {
-					err = gitext.Trees(r, tdb.PutRawTree, rdb.PutRawRef)
+					err = gitext.Trees(r, tdb.Put, rdb.PutRawRef)
 					if err != nil {
 						fmt.Println(err)
 					}

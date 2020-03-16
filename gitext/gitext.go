@@ -123,7 +123,7 @@ func EncodedObject(o plumbing.EncodedObject) (h plumbing.Hash, blob []byte, err 
 
 	return o.Hash(), b.Bytes(), err
 }
-func EncodedTree(o plumbing.EncodedObject) (blob []byte, err error) {
+func EncodedObj(o plumbing.EncodedObject) (blob []byte, err error) {
 
 	b := bytes.NewBuffer(make([]byte, 0))
 	bw := bufio.NewWriter(b)

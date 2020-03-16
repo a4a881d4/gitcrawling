@@ -20,6 +20,8 @@ func main() {
 		Raw()
 	case "db":
 		ReadDB(flag.Arg(0))
+	case "commit":
+		dumpCommit()
 	default:
 		Flat()
 	}

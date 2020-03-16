@@ -88,13 +88,35 @@ func Trees(r *git.Repository, tcb, rcb func(k, v []byte) error) error {
 	err = refs.ForEach(func(ref *plumbing.Reference) error {
 		key := remote + "/" + ref.Name().String()
 		fmt.Println(key)
-		if ref.Hash().IsZero() {
+		hash := ref.Hash()
+		if hash.IsZero() {
 			return nil
 		}
-		commit, err := r.CommitObject(ref.Hash())
+		commit, err := r.CommitObject(hash)
 		if err != nil {
 			return err
 		}
+
+		o, err := r.Storer.EncodedObject(plumbing.CommitObject, hash)
+		if err != nil {
+			return err
+		}
+
+		b, err := EncodedObj(o)
+		if err != nil {
+			return err
+		}
+
+		err = tcb(append([]byte("c"), hash[:]...), b)
+		if err != nil {
+			return err
+		}
+
+		err = tcb(append([]byte("r"), hash[:]...), commit.TreeHash[:])
+		if err != nil {
+			return err
+		}
+
 		err = rcb([]byte(key), commit.TreeHash[:])
 		if err != nil {
 			return err
@@ -127,13 +149,13 @@ func Trees(r *git.Repository, tcb, rcb func(k, v []byte) error) error {
 		if err != nil {
 			return err
 		}
-		b, err := EncodedTree(o)
 
+		b, err := EncodedObj(o)
 		if err != nil {
 			return err
 		}
 
-		err = tcb(h[:], b)
+		err = tcb(append([]byte("t"), h[:]...), b)
 		if err != nil {
 			return err
 		}
@@ -223,8 +245,70 @@ func done(h plumbing.Hash, g DBGeter, m map[plumbing.Hash]*Inode) error {
 	})
 	return err
 }
+
 func Tree(root plumbing.Hash, g DBGeter) (map[plumbing.Hash]*Inode, error) {
 	m := make(map[plumbing.Hash]*Inode)
 	err := done(root, g, m)
 	return m, err
+}
+
+func ObjToCommit(v []byte) (*object.Commit, error) {
+
+	r := bufio.NewReader(bytes.NewReader(v))
+	c := &object.Commit{}
+
+	var message bool
+	var pgpsig bool
+	for {
+		line, err := r.ReadBytes('\n')
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+
+		if pgpsig {
+			if len(line) > 0 && line[0] == ' ' {
+				line = bytes.TrimLeft(line, " ")
+				c.PGPSignature += string(line)
+				continue
+			} else {
+				pgpsig = false
+			}
+		}
+
+		if !message {
+			line = bytes.TrimSpace(line)
+			if len(line) == 0 {
+				message = true
+				continue
+			}
+
+			split := bytes.SplitN(line, []byte{' '}, 2)
+
+			var data []byte
+			if len(split) == 2 {
+				data = split[1]
+			}
+
+			switch string(split[0]) {
+			case "tree":
+				c.TreeHash = plumbing.NewHash(string(data))
+			case "parent":
+				c.ParentHashes = append(c.ParentHashes, plumbing.NewHash(string(data)))
+			case "author":
+				c.Author.Decode(data)
+			case "committer":
+				c.Committer.Decode(data)
+			case "gpgsig":
+				c.PGPSignature += string(data) + "\n"
+				pgpsig = true
+			}
+		} else {
+			c.Message += string(line)
+		}
+
+		if err == io.EOF {
+			return c,nil
+		}
+	}
+	return c,nil
 }
