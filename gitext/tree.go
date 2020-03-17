@@ -70,7 +70,7 @@ func remoteUrl(r *git.Repository) (string, error) {
 		return "", err
 	}
 
-	return u.Hostname() + "/" + u.Path, nil
+	return u.Hostname() + u.Path, nil
 }
 
 func Trees(r *git.Repository, tcb, rcb func(k, v []byte) error) error {
@@ -307,8 +307,8 @@ func ObjToCommit(v []byte) (*object.Commit, error) {
 		}
 
 		if err == io.EOF {
-			return c,nil
+			return c, nil
 		}
 	}
-	return c,nil
+	return c, nil
 }

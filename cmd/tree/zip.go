@@ -44,7 +44,7 @@ func (z *ZipEncoder) Zip(srcFile, owner string) error {
 			return err
 		}
 
-		header.Name = owner + "/" + strings.TrimPrefix(path, filepath.Dir(srcFile)+"/")
+		header.Name = path //owner + "/" + strings.TrimPrefix(path, filepath.Dir(srcFile)+"/")
 		fmt.Println(header.Name)
 
 		if info.IsDir() {
