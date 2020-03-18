@@ -32,9 +32,8 @@ func main() {
 
 	token = make(chan int, *argThread)
 
-	rdb := db.NewRefDB(*argRefsDir + "/refs")
-
 	var doSome = func(names []string) {
+		rdb := db.NewRefDB(*argRefsDir + "/refs")
 		rdb.CashePrefech(names)
 		rdb.NoDB()
 		for num, name := range names {
@@ -80,11 +79,11 @@ func main() {
 		<-token
 		fmt.Println("Done")
 		wg.Done()
+		rdb.Stop()
 	}
 	batchDo(doSome)
 	fmt.Println("Wait Clone finish")
 	wg.Wait()
-	rdb.Stop()
 }
 
 func dump(ref []gitext.Ref) {

@@ -42,7 +42,7 @@ func (self *RefDB) open(retry int) *leveldb.DB {
 	db, err := leveldb.OpenFile(self.Path, opts)
 	if err != nil {
 		self.db = nil
-		<-time.After(time.Duration(rand.Intn(1<<(8+retry))) * time.Millisecond)
+		<-time.After(time.Duration(rand.Intn(1<<(8+retry))+(1<<(8+retry))) * time.Millisecond)
 		fmt.Println("Retry Open", retry, err)
 		return self.open(retry + 1)
 	}
