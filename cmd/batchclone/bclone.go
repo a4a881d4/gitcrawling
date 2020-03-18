@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/a4a881d4/gitcrawling/db"
@@ -18,32 +19,23 @@ var (
 	argRefsDir  = flag.String("ref", ".gitdb", "The dir story Refs")
 	argForce    = flag.Bool("f", false, "force re clone")
 	argGithub   = flag.String("g", "github.com", "github server")
+	argThread   = flag.Int("t", 0, "Multi thread clone")
+)
+var (
+	token chan int
+	done  int
+	wg    sync.WaitGroup
 )
 
 func main() {
 	flag.Parse()
 
+	token = make(chan int, *argThread)
+
 	rdb := db.NewRefDB(*argRefsDir + "/refs")
 
-	buf, err := ioutil.ReadFile(flag.Arg(0))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	var rec = make(map[string][]string)
-	err = json.Unmarshal(buf, &rec)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	var done = 0
-	for _, v := range rec {
-		var names []string
-		for _, name := range v {
-			names = append(names, name)
-		}
-		rdb.Init(names)
+	var doSome = func(names []string) {
+		rdb.CashePrefech(names)
 		rdb.NoDB()
 		for num, name := range names {
 			repo := strings.Split(name, "/")
@@ -53,7 +45,6 @@ func main() {
 			}
 			owner, project := repo[0], repo[1]
 			if rdb.OK(owner, project) {
-				// dump(rdb.GetRef(owner, project))
 				continue
 			}
 			fmt.Println("Begin to Clone", owner, project, num, done, time.Now())
@@ -83,13 +74,56 @@ func main() {
 			refs := gitext.RepoRef(r)
 			rdb.PutRef(owner, project, refs)
 			dump(refs)
+			fmt.Println("End ", owner, project, num, done, time.Now())
 		}
-		rdb.Stop()
+		rdb.UnCashe(names)
+		<-token
+		fmt.Println("Done")
+		wg.Done()
 	}
+	batchDo(doSome)
+	fmt.Println("Wait Clone finish")
+	wg.Wait()
+	rdb.Stop()
 }
 
 func dump(ref []gitext.Ref) {
+	if len(ref) > 3 {
+		ref = ref[:3]
+	}
 	for k, v := range ref {
 		fmt.Println(k, ":", v)
+	}
+}
+
+func batchDo(putSome func([]string)) {
+	buf, err := ioutil.ReadFile(flag.Arg(0))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var rec = make(map[string][]string)
+	err = json.Unmarshal(buf, &rec)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	var batch []string
+	for _, v := range rec {
+		for _, name := range v {
+			batch = append(batch, name)
+			if len(batch) > 32 {
+				go putSome(batch)
+				wg.Add(1)
+				token <- 1
+				batch = []string{}
+			}
+		}
+	}
+	if len(batch) > 0 {
+		go putSome(batch)
+		wg.Add(1)
+		token <- 1
 	}
 }

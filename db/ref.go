@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/a4a881d4/gitcrawling/gitext"
@@ -41,7 +42,7 @@ func (self *RefDB) open(retry int) *leveldb.DB {
 	db, err := leveldb.OpenFile(self.Path, opts)
 	if err != nil {
 		self.db = nil
-		<-time.After(time.Duration(1<<(8+retry)) * time.Millisecond)
+		<-time.After(time.Duration(rand.Intn(1<<(8+retry))) * time.Millisecond)
 		fmt.Println("Retry Open", retry, err)
 		return self.open(retry + 1)
 	}
@@ -218,6 +219,26 @@ func (self *RefDB) IsBuild(owner, project string) bool {
 		return false
 	} else {
 		return r.IsBuild()
+	}
+}
+
+func (self *RefDB) CashePrefech(r []string) {
+	self.flush()
+	self.Open()
+	defer self.Close()
+	for _, v := range r {
+		k := "r/" + v
+		buf, err := self.db.Get([]byte(k), nil)
+		if err == nil {
+			record := gitext.EncodeRef(buf)
+			self.cache[k] = record
+		}
+	}
+}
+func (self *RefDB) UnCashe(r []string) {
+	for _, v := range r {
+		k := "r/" + v
+		delete(self.cache, k)
 	}
 }
 

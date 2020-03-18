@@ -55,7 +55,7 @@ func PlainCloneFS(url, path string) (*git.Repository, error) {
 		URL:               url,
 		Depth:             1,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
-		Progress:          os.Stdout,
+		// Progress:          os.Stdout,
 	}
 
 	token := os.Getenv("GITHUB_AUTH_TOKEN")
