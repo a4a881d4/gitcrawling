@@ -104,7 +104,11 @@ func Zip() {
 	z.Close()
 }
 
-func Unzip(zipFile string, destDir string) error {
+func Unzip() {
+	unzip(flag.Arg(0), *argReposDir)
+}
+
+func unzip(zipFile string, destDir string) error {
 	zipReader, err := zip.OpenReader(zipFile)
 	if err != nil {
 		return err
@@ -113,6 +117,9 @@ func Unzip(zipFile string, destDir string) error {
 
 	for _, f := range zipReader.File {
 		fpath := filepath.Join(destDir, f.Name)
+		fpath = strings.Replace(fpath, `\`, `/`, -1)
+		fmt.Println(fpath)
+
 		if f.FileInfo().IsDir() {
 			os.MkdirAll(fpath, os.ModePerm)
 		} else {

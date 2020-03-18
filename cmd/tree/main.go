@@ -23,7 +23,11 @@ func main() {
 	case "commit":
 		dumpCommit()
 	case "zip":
-		Zip()
+		if *argDump {
+			Unzip()
+		} else {
+			Zip()
+		}
 	default:
 		Flat()
 	}
