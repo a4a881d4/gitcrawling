@@ -16,6 +16,10 @@ func (self *DB) GetRawRef(h []byte, cb func([]byte) error) error {
 	err := self.Get(keyRawRef(h), cb)
 	return err
 }
+func (self *DB) HasRawRef(h []byte) bool {
+	_, err := self.txn.Get(keyRawRef(h))
+	return err == nil
+}
 
 func (self *DB) RawRefs(cb func(k, v []byte) error) error {
 	return self.ForEach(RefPrefix, cb)

@@ -73,11 +73,17 @@ func remoteUrl(r *git.Repository) (string, error) {
 	return u.Hostname() + u.Path, nil
 }
 
-func Trees(r *git.Repository, tcb, rcb func(k, v []byte) error) error {
+type RefDBer interface {
+	HasRawRef(h []byte) bool
+	PutRawRef(h, b []byte) error
+}
+
+func Trees(r *git.Repository, tcb func(k, v []byte) error, rdb RefDBer) error {
 	refs, err := r.Storer.IterReferences()
 	if err != nil {
 		return err
 	}
+
 	remote, err := remoteUrl(r)
 	if err != nil {
 		return err
@@ -85,9 +91,20 @@ func Trees(r *git.Repository, tcb, rcb func(k, v []byte) error) error {
 
 	seen := make(map[plumbing.Hash]bool)
 	var alltree []plumbing.Hash
+
 	err = refs.ForEach(func(ref *plumbing.Reference) error {
+
+		if !ref.Name().IsBranch() {
+			return nil
+		}
+
 		key := remote + "/" + ref.Name().String()
-		fmt.Println(key)
+
+		if rdb.HasRawRef([]byte(key)) {
+			fmt.Println(key, "in db")
+			return nil
+		}
+
 		hash := ref.Hash()
 		if hash.IsZero() {
 			return nil
@@ -117,10 +134,11 @@ func Trees(r *git.Repository, tcb, rcb func(k, v []byte) error) error {
 			return err
 		}
 
-		err = rcb([]byte(key), commit.TreeHash[:])
+		err = rdb.PutRawRef([]byte(key), commit.TreeHash[:])
 		if err != nil {
 			return err
 		}
+
 		alltree = append(alltree, commit.TreeHash)
 		tree, err := r.TreeObject(commit.TreeHash)
 		if err != nil {

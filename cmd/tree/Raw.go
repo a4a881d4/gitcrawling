@@ -44,19 +44,20 @@ func Raw() {
 		})
 		return
 	}
-	tdb, err := badgerdb.NewDB(*argDir + "/trees")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer tdb.Close()
 
 	rdb, err := badgerdb.NewDB(*argDir + "/refs")
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("rdb:", err)
 		return
 	}
 	defer rdb.Close()
+
+	tdb, err := badgerdb.NewDB(*argDir + "/trees")
+	if err != nil {
+		fmt.Println("tdb:", err)
+		return
+	}
+	defer tdb.Close()
 
 	var putSome = func(names []string) {
 		tdb.NewSession()
@@ -82,7 +83,7 @@ func Raw() {
 				if err != nil {
 					fmt.Println(ShowName(owner, project), err)
 				} else {
-					err = gitext.Trees(r, tdb.Put, rdb.PutRawRef)
+					err = gitext.Trees(r, tdb.Put, rdb)
 					if err != nil {
 						fmt.Println(err)
 					}
