@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	argReposDir = flag.String("r", ".gitdb", "The dir story Repos")
-	argRefsDir  = flag.String("ref", ".gitdb", "The dir story Refs")
+	argReposDir = flag.String("r", ".", "The dir story Repos")
+	argRefsDir  = flag.String("ref", "", "The dir story Refs")
 	argForce    = flag.Bool("f", false, "force re clone")
 	argGithub   = flag.String("g", "github.com", "github server")
 	argThread   = flag.Int("t", 0, "Multi thread clone")
@@ -24,7 +24,9 @@ var (
 var (
 	token chan int
 	done  int
+	all   int
 	wg    sync.WaitGroup
+	argDB bool
 )
 
 func main() {
@@ -32,22 +34,30 @@ func main() {
 
 	token = make(chan int, *argThread)
 
+	argDB = !(*argRefsDir == "")
+	var rdb *db.RefDB
 	var doSome = func(names []string) {
-		rdb := db.NewRefDB(*argRefsDir + "/refs")
-		rdb.CashePrefech(names)
-		rdb.NoDB()
+		if argDB {
+			rdb = db.NewRefDB(*argRefsDir + "/refs")
+			rdb.CashePrefech(names)
+			rdb.NoDB()
+		}
+
 		for num, name := range names {
+			all++
+			fmt.Printf("%06d\n", all)
 			repo := strings.Split(name, "/")
 			if len(repo) != 2 {
 				fmt.Println("error name", name)
 				continue
 			}
 			owner, project := repo[0], repo[1]
-			if rdb.OK(owner, project) {
-				continue
+			if argDB {
+				if rdb.OK(owner, project) {
+					continue
+				}
 			}
-			fmt.Println("Begin to Clone", owner, project, num, done, time.Now())
-			done++
+
 			url := fmt.Sprintf("http://%s/%s/%s", *argGithub, owner, project)
 			path := fmt.Sprintf("%s/repos/%s/%s", *argReposDir, owner, project)
 			_, err := os.Stat(path)
@@ -58,28 +68,34 @@ func main() {
 					continue
 				}
 			}
+			done++
+			fmt.Println("Begin to Clone", owner, project, num, done, all, time.Now())
 			r, err := gitext.PlainCloneFS(url, path)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
-
-			ref, err := r.Head()
-			if err != nil {
-				fmt.Println(err)
-				continue
+			if argDB {
+				ref, err := r.Head()
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				fmt.Println("HEAD: ", ref.Hash().String())
+				refs := gitext.RepoRef(r)
+				rdb.PutRef(owner, project, refs)
+				dump(refs)
 			}
-			fmt.Println("HEAD: ", ref.Hash().String())
-			refs := gitext.RepoRef(r)
-			rdb.PutRef(owner, project, refs)
-			dump(refs)
+
 			fmt.Println("End ", owner, project, num, done, time.Now())
 		}
-		rdb.UnCashe(names)
+		if argDB {
+			rdb.UnCashe(names)
+			rdb.Stop()
+		}
 		<-token
 		fmt.Println("Done")
 		wg.Done()
-		rdb.Stop()
 	}
 	batchDo(doSome)
 	fmt.Println("Wait Clone finish")
