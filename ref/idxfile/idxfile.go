@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	r, err := os.Open(os.Args[0])
+	r, err := os.Open(os.Args[1])
 	if err != nil {
 		fmt.Println(1, err)
 	}
