@@ -15,8 +15,12 @@ import (
 
 var (
 	argReposDir = flag.String("r", ".", "The dir story Repos")
-	argGithub   = flag.String("g", "github.com", "github server")
+	argMissDir = flag.String("m", ".", "The miss file dir")
 	argThread   = flag.Int("t", 0, "Multi thread clone")
+)
+
+var (
+	githubServer = []string{"github.com","github.com,cnpmjs.org"}
 )
 var (
 	token chan int
@@ -39,26 +43,27 @@ func main() {
 
 		for num, name := range names {
 			all++
-			fmt.Printf("%06d\n", all)
 			url, path, err := GetUrlPath(name)
 			if err != nil {
 				fmt.Println(err)
+				fmt.Printf("%06d %s bad\n", all,name)
 				continue
 			}
 			_, err = os.Stat(path)
 			if err == nil {
+				fmt.Printf("%06d %s exist\n", all,name)
 				continue
 			}
 			done++
 			fmt.Printf("%5d ", numT)
-			fmt.Println("Begin to Clone", name, num, done, all, time.Now())
+			fmt.Println("Begin to Clone", url, num, done, all, time.Now())
 			_, err = gitext.PlainCloneFS(url, path)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
 			fmt.Printf("%5d ", numT)
-			fmt.Println("End ", name, num, done, all, time.Now())
+			fmt.Println("End ", url, num, done, all, time.Now())
 		}
 	}
 	batchDo(doSome)
@@ -67,7 +72,7 @@ func main() {
 }
 
 func batchDo(putSome func([]string, int)) {
-	missfile := *argReposDir + "/miss"
+	missfile := *argMissDir + "/miss"
 	_, err := os.Stat(missfile)
 	if err != nil {
 		buildMiss(missfile)
@@ -106,7 +111,7 @@ func GetUrlPath(name string) (url, path string, err error) {
 	}
 	owner, project := repo[0], repo[1]
 
-	url = fmt.Sprintf("http://%s/%s/%s", *argGithub, owner, project)
+	url = fmt.Sprintf("http://%s/%s/%s", githubServer[rand.intn(2)], owner, project)
 
 	var bowner string
 	if len(owner) > 2 {
