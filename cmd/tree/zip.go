@@ -105,7 +105,10 @@ func Zip() {
 }
 
 func Unzip() {
-	unzip(flag.Arg(0), *argReposDir)
+	err := unzip(flag.Arg(0), *argReposDir)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func unzip(zipFile string, destDir string) error {
@@ -137,12 +140,13 @@ func unzip(zipFile string, destDir string) error {
 			if err != nil {
 				return err
 			}
-			defer outFile.Close()
 
 			_, err = io.Copy(outFile, inFile)
 			if err != nil {
 				return err
 			}
+			outFile.Close()
+
 		}
 	}
 	return nil
