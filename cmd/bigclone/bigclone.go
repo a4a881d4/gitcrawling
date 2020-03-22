@@ -18,6 +18,7 @@ var (
 	argReposDir = flag.String("r", ".", "The dir story Repos")
 	argMissDir  = flag.String("m", ".", "The miss file dir")
 	argThread   = flag.Int("t", 0, "Multi thread clone")
+	argNoRun    = flag.Bool("run",false,"Donot clone")
 )
 
 var (
@@ -83,6 +84,9 @@ func batchDo(putSome func([]string, int)) {
 		buildMiss(missfile)
 	} else {
 		updateMiss(missfile)
+	}
+	if *argNoRun {
+		return
 	}
 	buf, err := ioutil.ReadFile(missfile)
 	names := strings.Split(string(buf), "\n")
