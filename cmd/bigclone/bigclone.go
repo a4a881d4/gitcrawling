@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"strings"
 	"sync"
@@ -20,7 +21,7 @@ var (
 )
 
 var (
-	githubServer = []string{"github.com","github.com,cnpmjs.org"}
+	githubServer = []string{"github.com","github.com.cnpmjs.org"}
 )
 var (
 	token chan int
@@ -111,7 +112,7 @@ func GetUrlPath(name string) (url, path string, err error) {
 	}
 	owner, project := repo[0], repo[1]
 
-	url = fmt.Sprintf("http://%s/%s/%s", githubServer[rand.intn(2)], owner, project)
+	url = fmt.Sprintf("http://%s/%s/%s", githubServer[rand.Intn(2)], owner, project)
 
 	var bowner string
 	if len(owner) > 2 {
