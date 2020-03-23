@@ -2,19 +2,27 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"flag"
+	"os"
+	"context"
 
 	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/config"
+	"gopkg.in/src-d/go-git.v4/plumbing/storer"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/client"
 	"gopkg.in/src-d/go-git.v4/utils/ioutil"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/capability"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"	
+	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
 var (
-	argUrl = flag.string("u","github.com/a4a881d4/gitcrawling","git url")
-	argPackFile = flag.string("p","../temp.pack","Pack file")
+	argUrl = flag.String("u","http://github.com/a4a881d4/gitcrawling.git","git url")
+	argPackFile = flag.String("p","../temp.pack","Pack file")
 )
 
 func main() {
@@ -69,28 +77,33 @@ func upload(url string,pack io.Writer) error {
 	if err != nil {
 		return err
 	}
+	RefSpecs := cloneRefSpec(o)
+	refs, err := calculateRefs(RefSpecs, remoteRefs, o.Tags)
+	if err != nil {
+		return err
+	}
 
 	var result []plumbing.Hash
-	for _, ref := range remoteRefs {
-		hash := ref.Hash()
-		result = append(result, h)
-
+	for _, ref := range refs {
+		result = append(result, ref.Hash())
+	}
 	req.Wants = result
 	req.Haves = []plumbing.Hash{}
 
-	reader, err := s.UploadPack(ctx, req)
+	reader, err := s.UploadPack(context.Background(), req)
 	if err != nil {
 		return err
 	}
 	defer ioutil.CheckClose(reader, &err)
 
 	scanner := buildSidebandIfSupported(req.Capabilities, reader, o.Progress)
-	io.copy(pack,scanner)
+	io.Copy(pack,scanner)
 
 	return err
 }
 
-func buildSidebandIfSupported(l *capability.List, reader io.Reader, p sideband.Progress) io.Reader {
+func buildSidebandIfSupported(l *capability.List, 
+	reader io.Reader, p sideband.Progress) io.Reader {
 	var t sideband.Type
 
 	switch {
@@ -106,4 +119,79 @@ func buildSidebandIfSupported(l *capability.List, reader io.Reader, p sideband.P
 	d.Progress = p
 
 	return d
+}
+
+const refspecAllTags = "+refs/tags/*:refs/tags/*"
+
+func calculateRefs(
+	spec []config.RefSpec,
+	remoteRefs storer.ReferenceStorer,
+	tagMode git.TagMode,
+) (memory.ReferenceStorage, error) {
+	if tagMode == git.AllTags {
+		spec = append(spec, refspecAllTags)
+	}
+
+	refs := make(memory.ReferenceStorage)
+	for _, s := range spec {
+		if err := doCalculateRefs(s, remoteRefs, refs); err != nil {
+			return nil, err
+		}
+	}
+
+	return refs, nil
+}
+
+func doCalculateRefs(
+	s config.RefSpec,
+	remoteRefs storer.ReferenceStorer,
+	refs memory.ReferenceStorage,
+) error {
+	iter, err := remoteRefs.IterReferences()
+	if err != nil {
+		return err
+	}
+
+	var matched bool
+	err = iter.ForEach(func(ref *plumbing.Reference) error {
+		if !s.Match(ref.Name()) {
+			return nil
+		}
+
+		if ref.Type() == plumbing.SymbolicReference {
+			target, err := storer.ResolveReference(remoteRefs, ref.Name())
+			if err != nil {
+				return err
+			}
+
+			ref = plumbing.NewHashReference(ref.Name(), target.Hash())
+		}
+
+		if ref.Type() != plumbing.HashReference {
+			return nil
+		}
+
+		matched = true
+		if err := refs.SetReference(ref); err != nil {
+			return err
+		}
+
+		if !s.IsWildcard() {
+			return storer.ErrStop
+		}
+
+		return nil
+	})
+
+	if !matched && !s.IsWildcard() {
+		return fmt.Errorf("couldn't find remote ref %q", s.Src())
+	}
+
+	return err
+}
+
+func cloneRefSpec(o *git.CloneOptions) []config.RefSpec {
+	return []config.RefSpec{
+		config.RefSpec(fmt.Sprintf(config.DefaultFetchRefSpec, o.RemoteName)),
+	}
 }
