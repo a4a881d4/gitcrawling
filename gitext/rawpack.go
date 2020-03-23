@@ -59,15 +59,11 @@ func Upload(url string,pack io.Writer) error {
 	}
 	remoteRefs, err := ar.AllReferences()
 	if err != nil {
-		fmt.Println(1,err)
-		
 		return err
 	}
 	RefSpecs := cloneRefSpec(o)
 	refs, err := calculateRefs(RefSpecs, remoteRefs, o.Tags)
 	if err != nil {
-		fmt.Println(2,err)
-		
 		return err
 	}
 
@@ -77,10 +73,9 @@ func Upload(url string,pack io.Writer) error {
 	}
 	req.Wants = result
 	req.Haves = []plumbing.Hash{}
-	fmt.Println(req)
+	// fmt.Println(req)
 	reader, err := s.UploadPack(context.Background(), req)
 	if err != nil {
-		fmt.Println(3,err)
 		return err
 	}
 	defer ioutil.CheckClose(reader, &err)

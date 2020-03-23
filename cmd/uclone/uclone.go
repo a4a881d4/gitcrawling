@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	ospath "path"
 
 	"github.com/a4a881d4/gitcrawling/gitext"
 )
@@ -31,23 +32,13 @@ var (
 )
 
 func getPack(name string,numT int) error {
-	url, path, err := GetUrlPath(name)
-	if err != nil {
-		fmt.Printf("%06d %s bad\n", all, name)
-		return err
-	}
-	_, err = os.Stat(path)
-	if err == nil {
-		fmt.Printf("%06d %s exist\n", all, name)
-		return nil
-	}
 	done++
 	startTime := time.Now()
 	fmt.Printf("%5d ", numT)
 	fmt.Println("Begin to Clone", url, done, all,
 		startTime.Format("2006-01-02 15:04:05"))
 	
-	w, err := os.Create(path)
+	w, err := os.Create(tempf)
 	if err != nil {
 		return err
 	}
@@ -56,7 +47,7 @@ func getPack(name string,numT int) error {
 	if err = gitext.Upload(url,w); err != nil {
 		return err
 	}
-	
+
 	fmt.Printf("%5d ", numT)
 	endTime := time.Now()
 	Duration := endTime.Sub(startTime)
@@ -72,10 +63,24 @@ func clone(numT int, task chan string) {
 			break
 		}
 		all++
-		if err := getPack(name,numT); err != nil {
+		url, path, filename, err := GetUrlPath(name)
+		if err != nil {
+			fmt.Printf("%06d %s bad\n", all, name)
+			continue
+		}
+		_, err = os.Stat(path)
+		if err == nil {
+			fmt.Printf("%06d %s exist\n", all, name)
+			continue
+		}
+		os.MkdirAll(path,os.ModePerm)
+		pf := ospath.Join(path,filename)
+		tempf := ospath.Join(path,"tmp-pack")
+		if err := getPack(url,tempf,numT); err != nil {
 			fmt.Printf("%6d ",numT)
 			fmt.Println(err)
 		}
+		os.Rename(temp,pf)
 	}
 	fmt.Println("Worker", numT, "Done")
 	wg.Done()
@@ -118,7 +123,7 @@ func batchDo(task chan string) {
 	}
 }
 
-func GetUrlPath(name string) (url, path string, err error) {
+func GetUrlPath(name string) (url, path, filename string, err error) {
 	repo := strings.Split(name, "/")
 	if len(repo) != 2 {
 		url, path = "", ""
@@ -136,11 +141,7 @@ func GetUrlPath(name string) (url, path string, err error) {
 		bowner = owner + "/" + owner
 	}
 	path = fmt.Sprintf("%s/packs/%s/%s", *argReposDir, bowner, project)
-	_, err = os.Stat(path)
-	if err != nil {
-		os.MkdirAll(path,os.ModePerm)
-	}
-	path += "/pack-"+owner+"."+project+".pack"
+	filename = fmt.Sprintf("pack-%s.%s.pack",owner,project)
 	err = nil
 	return
 }
@@ -188,7 +189,7 @@ func updateMiss(missfile string) {
 	defer w.Close()
 
 	for _, name := range names {
-		_, path, err := GetUrlPath(name)
+		_, path, _, err := GetUrlPath(name)
 		if err != nil {
 			continue
 		}
