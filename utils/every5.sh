@@ -6,5 +6,5 @@ then
     cd /home/pi/works/sda/gitdb
     wc -l ./task/$1/miss/miss
     python3 ./bin/clearup.py ./task/$1/miss/miss
-    nohup ./bin/pclone -m ./task/$1/miss -t 16 > $1.log &
+    nohup ./bin/pclone -m ./task/$1/miss -t 8 > $1.log &
 fi
