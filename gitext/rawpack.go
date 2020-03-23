@@ -49,7 +49,7 @@ func Upload(url string,pack io.Writer) error {
 		return err
 	}
 
-	fmt.Println(ar)
+	// fmt.Println(ar)
 	
 	req := packp.NewUploadPackRequestFromCapabilities(ar.Capabilities)
 	req.Depth = packp.DepthCommits(o.Depth)

@@ -31,7 +31,7 @@ var (
 	wg    sync.WaitGroup
 )
 
-func getPack(name string,numT int) error {
+func getPack(url,tempf string,numT int) error {
 	done++
 	startTime := time.Now()
 	fmt.Printf("%5d ", numT)
@@ -78,9 +78,10 @@ func clone(numT int, task chan string) {
 		tempf := ospath.Join(path,"tmp-pack")
 		if err := getPack(url,tempf,numT); err != nil {
 			fmt.Printf("%6d ",numT)
-			fmt.Println(err)
+			fmt.Println(err,path,"will be removed")
+			os.RemoveAll(path)
 		}
-		os.Rename(temp,pf)
+		os.Rename(tempf,pf)
 	}
 	fmt.Println("Worker", numT, "Done")
 	wg.Done()
