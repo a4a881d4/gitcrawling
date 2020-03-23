@@ -1,0 +1,5 @@
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=HOME=/home/pi
+
+*/5 * * * * pi /home/pi/works/sda/gitdb/bin/every5.sh 7.0
