@@ -20,7 +20,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
-func Upload(url string,pack io.Writer) error {
+func Upload(url string,pack io.Writer) (refs memory.ReferenceStorage,err error) {
 	o := &git.CloneOptions{
 		URL:               url,
 		Depth:             1,
@@ -29,42 +29,40 @@ func Upload(url string,pack io.Writer) error {
 	}
 	ep, err := transport.NewEndpoint(o.URL)
 	if err != nil {
-		return  err
+		return
 	}
 
 	c, err := client.NewClient(ep)
 	if err != nil {
-		return err
+		return
 	}
 
 	s,err := c.NewUploadPackSession(ep, o.Auth)
 	if err != nil {
-		return err
+		return
 	}
 
 	defer ioutil.CheckClose(s, &err)
 
 	ar, err := s.AdvertisedReferences()
 	if err != nil {
-		return err
+		return
 	}
 
-	// fmt.Println(ar)
-	
 	req := packp.NewUploadPackRequestFromCapabilities(ar.Capabilities)
 	req.Depth = packp.DepthCommits(o.Depth)
 	req.Shallows = make([]plumbing.Hash, 0)
-	if err := req.Capabilities.Set(capability.Shallow); err != nil {
-		return err
+	if err = req.Capabilities.Set(capability.Shallow); err != nil {
+		return
 	}
 	remoteRefs, err := ar.AllReferences()
 	if err != nil {
-		return err
+		return
 	}
 	RefSpecs := cloneRefSpec(o)
-	refs, err := calculateRefs(RefSpecs, remoteRefs, o.Tags)
+	refs, err = calculateRefs(RefSpecs, remoteRefs, o.Tags)
 	if err != nil {
-		return err
+		return
 	}
 
 	var result []plumbing.Hash
@@ -73,17 +71,16 @@ func Upload(url string,pack io.Writer) error {
 	}
 	req.Wants = result
 	req.Haves = []plumbing.Hash{}
-	// fmt.Println(req)
 	reader, err := s.UploadPack(context.Background(), req)
 	if err != nil {
-		return err
+		return
 	}
 	defer ioutil.CheckClose(reader, &err)
 
 	scanner := buildSidebandIfSupported(req.Capabilities, reader, o.Progress)
 	io.Copy(pack,scanner)
 
-	return err
+	return
 }
 
 func buildSidebandIfSupported(l *capability.List, 

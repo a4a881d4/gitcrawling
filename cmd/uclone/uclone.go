@@ -7,12 +7,13 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	ospath "path"
 	"strings"
 	"sync"
 	"time"
-	ospath "path"
 
 	"github.com/a4a881d4/gitcrawling/gitext"
+	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
 var (
@@ -31,21 +32,26 @@ var (
 	wg    sync.WaitGroup
 )
 
-func getPack(url,tempf string,numT int) error {
+func getPack(url,tempf string,numT int) (refs string, err error) {
 	done++
 	startTime := time.Now()
 	fmt.Printf("%5d ", numT)
 	fmt.Println("Begin to Clone", url, done, all,
 		startTime.Format("2006-01-02 15:04:05"))
-	
+	refs = ""
 	w, err := os.Create(tempf)
 	if err != nil {
-		return err
+		return
 	}
 	defer w.Close()
 	
-	if err = gitext.Upload(url,w); err != nil {
-		return err
+	var rmap memory.ReferenceStorage 
+	if rmap,err = gitext.Upload(url,w); err != nil {
+		return
+	}
+
+	for k,v := range rmap {
+		refs += fmt.Sprintf("%s: %s\n",k.String(),v.Hash().String())
 	}
 
 	fmt.Printf("%5d ", numT)
@@ -53,7 +59,7 @@ func getPack(url,tempf string,numT int) error {
 	Duration := endTime.Sub(startTime)
 	fmt.Println("End ", url, done, all,
 		endTime.Format("2006-01-02 15:04:05"), Duration.Seconds())
-	return nil
+	return 
 }
 
 func clone(numT int, task chan string) {
@@ -76,12 +82,14 @@ func clone(numT int, task chan string) {
 		os.MkdirAll(path,os.ModePerm)
 		pf := ospath.Join(path,filename)
 		tempf := ospath.Join(path,"tmp-pack")
-		if err := getPack(url,tempf,numT); err != nil {
+		if refs,err := getPack(url,tempf,numT); err != nil {
 			fmt.Printf("%6d ",numT)
 			fmt.Println(err,path,"will be removed")
 			os.RemoveAll(path)
+		} else {
+			ioutil.WriteFile(ospath.Join(path,"refs"),[]byte(refs),0755)
+			os.Rename(tempf,pf)
 		}
-		os.Rename(tempf,pf)
 	}
 	fmt.Println("Worker", numT, "Done")
 	wg.Done()
