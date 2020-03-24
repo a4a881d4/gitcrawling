@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/a4a881d4/gitcrawling/gitext"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 type Offset []uint64
@@ -58,6 +59,12 @@ func main() {
 			}
 
 			packfile := strings.Replace(path, ".idx", ".pack", -1)
+			st,err := os.Stat(packfile)
+			
+			if err != nil {
+				return err
+			}
+			pflen  := st.Size()
 			r, err := os.Open(packfile)
 			if err != nil {
 				return err
@@ -73,11 +80,20 @@ func main() {
 					var length int64
 					if k < len(offset)-1 {
 						length = int64(offset[k+1] - offset[k])
+					} else {
+						length = pflen - int64(offset[k]) - 20
 					}
 					fmt.Printf("%10s: %6d %6d %6d\n", h.Type.String(),offset[k], h.Length, length)
 				}
 			}
-
+			var hash plumbing.Hash
+			hl,err := r.ReadAt(hash[:],pflen-20)
+			if hl!=20 || err!=nil {
+				fmt.Println(err,hl)
+				return err
+			} else {
+				fmt.Println(hash.String())
+			}
 		}
 		return err
 	})
