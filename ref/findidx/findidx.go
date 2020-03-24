@@ -74,7 +74,7 @@ func main() {
 					if k < len(offset)-1 {
 						length = int64(offset[k+1] - offset[k])
 					}
-					fmt.Printf("%10s: %6d %6d\n", h.Type.String(), h.Length, length)
+					fmt.Printf("%10s: %6d %6d %6d\n", h.Type.String(),offset[k], h.Length, length)
 				}
 			}
 
