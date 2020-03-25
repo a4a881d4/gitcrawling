@@ -8,7 +8,8 @@ import (
 )
 
 func main() {
-	r, err := gitext.GetOffset(os.Args[1])
+	s := gitext.DefaultByteSplit()
+	r, err := s.GetOffset(os.Args[1])
 	if err != nil {
 		fmt.Println(err)
 	}
