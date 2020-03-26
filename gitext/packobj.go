@@ -10,14 +10,11 @@ import (
 	"path"
 	"strings"
 
+	"github.com/a4a881d4/gitcrawling/packext"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/format/idxfile"
 	"gopkg.in/src-d/go-git.v4/utils/binary"
 )
-
-type ObjEntry struct {
-	Offset, Size uint64
-}
 
 type Classifer interface {
 	Hit(plumbing.Hash) bool
@@ -64,8 +61,13 @@ func DefaultByteSplit() SplitIdx {
 	return r
 }
 
-func (s SplitIdx) GetOffset(idxf string) (objs [][]ObjEntry, err error) {
-	objs = make([][]ObjEntry, len(s))
+func (s SplitIdx) GetOffset(idxf string) (objs [][]packext.ObjEntry, err error) {
+	var op packext.OriginPackFile
+	op, err = packext.DefaultOPS.GetHash(idxf)
+	if err != nil {
+		return
+	}
+	objs = make([][]packext.ObjEntry, len(s))
 
 	var idx *idxfile.MemoryIndex
 	idx, err = NewIdx(idxf)
@@ -94,8 +96,64 @@ func (s SplitIdx) GetOffset(idxf string) (objs [][]ObjEntry, err error) {
 		if ma == -1 {
 			return
 		}
+		var objentry = op.NewEntry(last)
+		objentry.Size = uint32(size)
+		objs[ma] = append(objs[ma], *objentry)
+	}
 
-		objs[ma] = append(objs[ma], ObjEntry{last.Offset, size})
+	for {
+		e, err = iter.Next()
+		if err == io.EOF {
+			Add(pfSize - 20 - last.Offset)
+			err = nil
+			break
+		}
+		if err != nil {
+			return
+		}
+		if last != nil {
+			Add(e.Offset - last.Offset)
+		}
+		last = e
+	}
+
+	return
+}
+
+func GetOffsetNoClassify(idxf string) (objs []packext.ObjEntry, err error) {
+	var op packext.OriginPackFile
+	op, err = packext.DefaultOPS.GetHash(idxf)
+	if err != nil {
+		return
+	}
+	objs = []packext.ObjEntry{}
+
+	var idx *idxfile.MemoryIndex
+	idx, err = NewIdx(idxf)
+	if err != nil {
+		return
+	}
+	var pfSize uint64
+	stat, err := os.Stat(strings.Replace(idxf, ".idx", ".pack", -1))
+	if err != nil {
+		return
+	}
+	pfSize = uint64(stat.Size())
+
+	iter, err := idx.EntriesByOffset()
+	if err != nil {
+		return
+	}
+	var last, e *idxfile.Entry
+	last = nil
+	var Add = func(size uint64) {
+		if last == nil {
+			return
+		}
+
+		var objentry = op.NewEntry(last)
+		objentry.Size = uint32(size)
+		objs = append(objs, *objentry)
 	}
 
 	for {
