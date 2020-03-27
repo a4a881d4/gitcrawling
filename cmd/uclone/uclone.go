@@ -138,6 +138,7 @@ func batchDo(task chan string) {
 }
 
 func GetUrlPath(name string) (url, path, filename string, err error) {
+	name = strings.Replace(name, "\r", "", -1)
 	repo := strings.Split(name, "/")
 	if len(repo) != 2 {
 		url, path = "", ""

@@ -15,7 +15,7 @@ for line in fo.readlines():
     if os.path.exists(dir):
         pack = os.listdir(dir+"/objects/pack")
         if len(pack)==2:
-            if ".idx" in pack[0] or ".pack" in pack[0]:
+            if ".idx" in pack[0] or ".pack" in pack[0] or "refs" in pack[0]:
                 continue
         print(dir,"need remove")
         shutil.rmtree(dir)
