@@ -32,7 +32,7 @@ var (
 	wg    sync.WaitGroup
 )
 
-func getPack(url,tempf string,numT int) (refs string, err error) {
+func getPack(url, tempf string, numT int) (refs string, err error) {
 	done++
 	startTime := time.Now()
 	fmt.Printf("%5d ", numT)
@@ -44,14 +44,14 @@ func getPack(url,tempf string,numT int) (refs string, err error) {
 		return
 	}
 	defer w.Close()
-	
-	var rmap memory.ReferenceStorage 
-	if rmap,err = gitext.Upload(url,w); err != nil {
+
+	var rmap memory.ReferenceStorage
+	if rmap, err = gitext.Upload(url, w); err != nil {
 		return
 	}
 
-	for k,v := range rmap {
-		refs += fmt.Sprintf("%s: %s\n",k.String(),v.Hash().String())
+	for k, v := range rmap {
+		refs += fmt.Sprintf("%s: %s\n", k.String(), v.Hash().String())
 	}
 
 	fmt.Printf("%5d ", numT)
@@ -59,7 +59,7 @@ func getPack(url,tempf string,numT int) (refs string, err error) {
 	Duration := endTime.Sub(startTime)
 	fmt.Println("End ", url, done, all,
 		endTime.Format("2006-01-02 15:04:05"), Duration.Seconds())
-	return 
+	return
 }
 
 func clone(numT int, task chan string) {
@@ -79,16 +79,16 @@ func clone(numT int, task chan string) {
 			fmt.Printf("%06d %s exist\n", all, name)
 			continue
 		}
-		os.MkdirAll(path,os.ModePerm)
-		pf := ospath.Join(path,filename)
-		tempf := ospath.Join(path,"tmp-pack")
-		if refs,err := getPack(url,tempf,numT); err != nil {
-			fmt.Printf("%6d ",numT)
-			fmt.Println(err,path,"will be removed")
+		os.MkdirAll(path, os.ModePerm)
+		pf := ospath.Join(path, filename)
+		tempf := ospath.Join(path, "tmp-pack")
+		if refs, err := getPack(url, tempf, numT); err != nil {
+			fmt.Printf("%6d ", numT)
+			fmt.Println(err, path, "will be removed")
 			os.RemoveAll(path)
 		} else {
-			ioutil.WriteFile(ospath.Join(path,"refs"),[]byte(refs),0755)
-			os.Rename(tempf,pf)
+			ioutil.WriteFile(ospath.Join(path, "refs"), []byte(refs), 0755)
+			os.Rename(tempf, pf)
 		}
 	}
 	fmt.Println("Worker", numT, "Done")
@@ -128,6 +128,7 @@ func batchDo(task chan string) {
 	names := strings.Split(string(buf), "\n")
 
 	for _, name := range names {
+		name = strings.Replace(name, "\r", "", -1)
 		task <- name
 	}
 }
@@ -150,7 +151,7 @@ func GetUrlPath(name string) (url, path, filename string, err error) {
 		bowner = owner + "/" + owner
 	}
 	path = fmt.Sprintf("%s/packs/%s/%s", *argReposDir, bowner, project)
-	filename = fmt.Sprintf("pack-%s.%s.pack",owner,project)
+	filename = fmt.Sprintf("pack-%s.%s.pack", owner, project)
 	err = nil
 	return
 }
