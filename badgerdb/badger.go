@@ -1,6 +1,8 @@
 package badgerdb
 
 import (
+	"fmt"
+
 	badger "github.com/dgraph-io/badger"
 )
 
@@ -10,10 +12,12 @@ type DB struct {
 }
 
 func NewDB(path string) (*DB, error) {
-	db, err := badger.Open(badger.DefaultOptions(path))
+	opts := badger.DefaultOptions(path)
+	opts.MaxTableSize = 64 << 15
+	db, err := badger.Open(opts)
 	if err != nil {
 		db.RunValueLogGC(0.7)
-		db, err = badger.Open(badger.DefaultOptions(path))
+		db, err = badger.Open(opts)
 	}
 	return &DB{db, nil}, err
 }
@@ -21,6 +25,7 @@ func (self *DB) Close() {
 	if self.txn != nil {
 		self.txn.Commit()
 		self.txn.Discard()
+		self.txn = nil
 	}
 	self.db.Close()
 }
@@ -31,6 +36,7 @@ func (self *DB) NewSession() {
 func (self *DB) Put(k, v []byte) (err error) {
 	if err = self.txn.Set(k, v); err == badger.ErrTxnTooBig {
 		_ = self.txn.Commit()
+		self.txn.Discard()
 		self.txn = self.db.NewTransaction(true)
 		err = self.txn.Set(k, v)
 	}
@@ -38,6 +44,7 @@ func (self *DB) Put(k, v []byte) (err error) {
 }
 
 func (self *DB) EndSession() {
+	fmt.Println("End Commit")
 	self.txn.Commit()
 	self.txn.Discard()
 	self.txn = nil
@@ -78,4 +85,33 @@ func (self *DB) ForEach(prefix []byte, cb func(k, v []byte) error) error {
 		}
 		return nil
 	})
+}
+func (self *DB) ForEachOne(prefix []byte, cb func(k, v []byte) error) error {
+	return self.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 0
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			var cbk = func(v []byte) error {
+				return cb(item.Key(), v)
+			}
+			err := item.Value(cbk)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+func (self *DB) Delete(k []byte) (err error) {
+	if err = self.txn.Delete(k); err == badger.ErrTxnTooBig {
+		fmt.Println("Commit", string(k))
+		_ = self.txn.Commit()
+		self.txn.Discard()
+		self.txn = self.db.NewTransaction(true)
+		err = self.txn.Delete(k)
+	}
+	return
 }
