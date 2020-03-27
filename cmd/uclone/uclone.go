@@ -23,7 +23,11 @@ var (
 )
 
 var (
-	githubServer = []string{"github.com", "github.com.cnpmjs.org"}
+	githubServer = []string{
+		"git://github.com",
+		"http://github.com.cnpmjs.org",
+		"http://github.com.cnpmjs.org",
+	}
 )
 var (
 	token chan int
@@ -142,7 +146,7 @@ func GetUrlPath(name string) (url, path, filename string, err error) {
 	}
 	owner, project := repo[0], repo[1]
 
-	url = fmt.Sprintf("http://%s/%s/%s", githubServer[rand.Intn(2)], owner, project)
+	url = fmt.Sprintf("%s/%s/%s", githubServer[rand.Intn(3)], owner, project)
 
 	var bowner string
 	if len(owner) > 2 {
