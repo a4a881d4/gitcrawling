@@ -14,6 +14,7 @@ import (
 	"github.com/a4a881d4/gitcrawling/badgerdb"
 	"github.com/a4a881d4/gitcrawling/gitext"
 	"github.com/a4a881d4/gitcrawling/packext"
+	"github.com/a4a881d4/gitcrawling/types"
 )
 
 var (
@@ -40,6 +41,8 @@ func main() {
 		importObj(tdb)
 	case "dedup":
 		deDupObj(tdb)
+	case "dup":
+		dupObj(tdb)
 	case "count":
 		countObj(tdb)
 	default:
@@ -47,34 +50,14 @@ func main() {
 	}
 }
 func countObj(tdb *badgerdb.DB) {
-	var counter = make([]int64, 33)
-	var total int64 = 0
-	var count = func(a uint32) int {
-		var r int = 0
-		for ; a != 0; r++ {
-			a = a >> 1
-		}
-		counter[r]++
-		total++
-		return r
-	}
+	ic := types.NewIntCounter(33)
 	tdb.ForEach([]byte("hash/"), func(k, v []byte) error {
 		b := &packext.ObjEntry{}
 		b.FromByte(v)
-		count(b.Size)
+		ic.Count32(b.Size)
 		return nil
 	})
-
-	for i, v := range counter {
-		if i == 0 {
-			fmt.Printf("%10d: %8d ", 0, v*1_000_000/total)
-		} else {
-			fmt.Printf("%10d: %8d ", 1<<(i-1), v*1_000_000/total)
-		}
-		if i&3 == 3 {
-			fmt.Println()
-		}
-	}
+	ic.Dump()
 }
 
 func deDupObj(tdb *badgerdb.DB) {
@@ -190,4 +173,44 @@ func dumpObj(tdb *badgerdb.DB) {
 		return nil
 	})
 	fmt.Println("Dup:", dup)
+}
+
+func dupObj(tdb *badgerdb.DB) {
+	ic := types.NewIntCounter(33)
+	s := tdb.NewHashSession()
+	defer s.End()
+	var newEntry = func() badgerdb.Byter {
+		return &packext.ObjEntry{}
+	}
+	var total, packed, small, ind, all int64
+	for {
+		items, err := s.NextGroup(45, newEntry)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		if len(items) > 0 {
+			for k, v := range items {
+				s := int64(v.(*packext.ObjEntry).Size)
+				ic.Count64(uint64(s))
+				total += s
+				if k == 0 {
+					small = s
+				} else {
+					if s < small {
+						small = s
+					}
+				}
+			}
+			packed += small
+			ind++
+			all += int64(len(items))
+		}
+	}
+
+	fmt.Println("Res:", total, packed, ind, all)
+	ic.Dump()
 }

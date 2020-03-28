@@ -12,7 +12,7 @@ type DB struct {
 }
 
 func NewDB(path string) (*DB, error) {
-	opts := badger.DefaultOptions(path)
+	opts := badger.DefaultOptions(path).WithMaxTableSize(64 << 18)
 	db, err := badger.Open(opts)
 	if err != nil {
 		db.RunValueLogGC(0.7)
@@ -66,6 +66,7 @@ func (self *DB) Get(k []byte, cb func(v []byte) error) (err error) {
 	})
 	return
 }
+
 func (self *DB) ForEach(prefix []byte, cb func(k, v []byte) error) error {
 	return self.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
