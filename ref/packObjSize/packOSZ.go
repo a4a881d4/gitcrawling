@@ -141,7 +141,8 @@ func importObj(tdb *badgerdb.DB) {
 	defer tdb.EndSession()
 
 	var doSome = func(fn string) {
-		r, err := gitext.GetOffsetNoClassify(fn)
+		op, r, err := gitext.GetOffsetNoClassify(fn)
+		tdb.Put([]byte("file/"+op.String()), []byte(fn))
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -160,7 +161,7 @@ func importObj(tdb *badgerdb.DB) {
 	}
 	if stat.IsDir() {
 		filepath.Walk(flag.Arg(0), func(path string, info os.FileInfo, err error) error {
-			if strings.Contains(path, ".idx") {
+			if strings.Contains(path, ".idx") && strings.Contains(path, "pack-") {
 				doSome(path)
 			}
 			return nil

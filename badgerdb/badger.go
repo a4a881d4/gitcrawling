@@ -13,7 +13,6 @@ type DB struct {
 
 func NewDB(path string) (*DB, error) {
 	opts := badger.DefaultOptions(path)
-	opts.MaxTableSize = 64 << 15
 	db, err := badger.Open(opts)
 	if err != nil {
 		db.RunValueLogGC(0.7)

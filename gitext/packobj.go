@@ -120,8 +120,7 @@ func (s SplitIdx) GetOffset(idxf string) (objs [][]packext.ObjEntry, err error) 
 	return
 }
 
-func GetOffsetNoClassify(idxf string) (objs []packext.ObjEntry, err error) {
-	var op packext.OriginPackFile
+func GetOffsetNoClassify(idxf string) (op packext.OriginPackFile, objs []packext.ObjEntry, err error) {
 	op, err = packext.DefaultOPS.GetHash(idxf)
 	if err != nil {
 		return
