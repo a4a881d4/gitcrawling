@@ -15,15 +15,24 @@ func NewIntCounter(l int) *IntCounter {
 	}
 }
 func (ic *IntCounter) Count32(a uint32) int {
-	return ic.Count64(uint64(a))
+	return ic.Count64(int64(a))
 }
-func (ic *IntCounter) Count64(a uint64) int {
+func (ic *IntCounter) Count64(a int64) int {
 	var r int = 0
 	for ; a != 0 && r < ic.Len; r++ {
 		a = a >> 1
 	}
 	ic.C[r]++
 	ic.Total++
+	return r
+}
+func (ic *IntCounter) Count64Other(a, b int64) int {
+	var r int = 0
+	for ; a != 0 && r < ic.Len; r++ {
+		a = a >> 1
+	}
+	ic.C[r] += b
+	ic.Total += b
 	return r
 }
 func (ic *IntCounter) Dump() {
@@ -35,7 +44,7 @@ func (ic *IntCounter) Dump() {
 		if i == 0 {
 			fmt.Printf("%10d: %8d ", 0, v*1_000_000/ic.Total)
 		} else {
-			fmt.Printf("%10d: %8d ", 1<<(i-1), v*1_000_000/total)
+			fmt.Printf("%10d: %8d ", 1<<(i-1), v*1_000_000/ic.Total)
 		}
 		if i&3 == 3 {
 			fmt.Println()

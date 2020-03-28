@@ -35,13 +35,13 @@ func (db *DB) NewHashSession() *HashSession {
 }
 
 func (s *HashSession) End() {
-	if s.txn != nil {
-		s.txn.Discard()
-		s.txn = nil
-	}
 	if s.it != nil {
 		s.it.Close()
 		s.it = nil
+	}
+	if s.txn != nil {
+		s.txn.Discard()
+		s.txn = nil
 	}
 }
 

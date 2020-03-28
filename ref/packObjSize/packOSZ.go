@@ -177,6 +177,7 @@ func dumpObj(tdb *badgerdb.DB) {
 
 func dupObj(tdb *badgerdb.DB) {
 	ic := types.NewIntCounter(33)
+	sc := types.NewIntCounter(33)
 	s := tdb.NewHashSession()
 	defer s.End()
 	var newEntry = func() badgerdb.Byter {
@@ -195,7 +196,8 @@ func dupObj(tdb *badgerdb.DB) {
 		if len(items) > 0 {
 			for k, v := range items {
 				s := int64(v.(*packext.ObjEntry).Size)
-				ic.Count64(uint64(s))
+				ic.Count64(s)
+				sc.Count64Other(s, s)
 				total += s
 				if k == 0 {
 					small = s
@@ -213,4 +215,5 @@ func dupObj(tdb *badgerdb.DB) {
 
 	fmt.Println("Res:", total, packed, ind, all)
 	ic.Dump()
+	sc.Dump()
 }
