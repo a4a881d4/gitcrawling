@@ -4,28 +4,28 @@ import (
 	"fmt"
 	"io"
 
-	"os"
 	"context"
+	"os"
 
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
-	"gopkg.in/src-d/go-git.v4/plumbing/storer"
 	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/transport"
-	"gopkg.in/src-d/go-git.v4/plumbing/transport/client"
-	"gopkg.in/src-d/go-git.v4/utils/ioutil"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp"
 	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/capability"
-	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"	
+	"gopkg.in/src-d/go-git.v4/plumbing/protocol/packp/sideband"
+	"gopkg.in/src-d/go-git.v4/plumbing/storer"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/client"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
+	"gopkg.in/src-d/go-git.v4/utils/ioutil"
 )
 
-func Upload(url string,pack io.Writer) (refs memory.ReferenceStorage,err error) {
+func Upload(url string, pack io.Writer) (refs memory.ReferenceStorage, err error) {
 	o := &git.CloneOptions{
 		URL:               url,
 		Depth:             1,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
-		Progress: os.Stdout,
+		Progress:          os.Stdout,
 	}
 	ep, err := transport.NewEndpoint(o.URL)
 	if err != nil {
@@ -37,7 +37,7 @@ func Upload(url string,pack io.Writer) (refs memory.ReferenceStorage,err error) 
 		return
 	}
 
-	s,err := c.NewUploadPackSession(ep, o.Auth)
+	s, err := c.NewUploadPackSession(ep, o.Auth)
 	if err != nil {
 		return
 	}
@@ -78,12 +78,12 @@ func Upload(url string,pack io.Writer) (refs memory.ReferenceStorage,err error) 
 	defer ioutil.CheckClose(reader, &err)
 
 	scanner := buildSidebandIfSupported(req.Capabilities, reader, o.Progress)
-	io.Copy(pack,scanner)
+	_, err = io.Copy(pack, scanner)
 
 	return
 }
 
-func buildSidebandIfSupported(l *capability.List, 
+func buildSidebandIfSupported(l *capability.List,
 	reader io.Reader, p sideband.Progress) io.Reader {
 	var t sideband.Type
 
