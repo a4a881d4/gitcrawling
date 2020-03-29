@@ -34,12 +34,12 @@ func main() {
 	defer tdb.Close()
 	switch *argMod {
 	case "json":
-		Json(tdb)
+		toJson(tdb)
 	case "import":
 		importObj(tdb)
 	default:
 		importObj(tdb)
-		Json256(tdb)
+		toJson(tdb)
 	}
 
 }
@@ -56,7 +56,7 @@ type packfile struct {
 	Task     []OE
 }
 
-func Json(tdb *badgerdb.DB) {
+func toJson(tdb *badgerdb.DB) {
 	var format string
 	var g int
 	switch *argGrp {
