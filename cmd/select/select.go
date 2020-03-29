@@ -7,12 +7,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/a4a881d4/gitcrawling/badgerdb"
 	"github.com/a4a881d4/gitcrawling/gitext"
 	"github.com/a4a881d4/gitcrawling/packext"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 var (
@@ -37,11 +40,12 @@ func main() {
 		toJson(tdb)
 	case "import":
 		importObj(tdb)
+	case "build":
+		fromJson()
 	default:
 		importObj(tdb)
 		toJson(tdb)
 	}
-
 }
 
 type OE struct {
@@ -75,7 +79,7 @@ func toJson(tdb *badgerdb.DB) {
 	}
 	for i := 0; i < g; i++ {
 		pf := fmt.Sprintf(format, i)
-		err := build(tdb, pf)
+		err := buildToJson(tdb, pf)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -99,7 +103,7 @@ func getFileFromDB(tdb *badgerdb.DB) (map[packext.OriginPackFile]*packfile, erro
 	return files, err
 }
 
-func build(tdb *badgerdb.DB, prefix string) error {
+func buildToJson(tdb *badgerdb.DB, prefix string) error {
 	files, err := getFileFromDB(tdb)
 	if err != nil {
 		return err
@@ -193,4 +197,115 @@ func importObj(tdb *badgerdb.DB) {
 		doSome(flag.Arg(0))
 	}
 	fmt.Println("All:", all)
+}
+
+func fromJson() {
+	var format string
+	var g int
+	switch *argGrp {
+	case 16:
+		format = "%01x"
+		g = 16
+	case 256:
+		format = "%02x"
+		g = 256
+	case 4096:
+		format = "%03x"
+		g = 4096
+	default:
+		format = "%02x"
+		g = 256
+	}
+	for i := 0; i < g; i++ {
+		pf := fmt.Sprintf(format, i)
+		pf = pf + ".json"
+		jf := path.Join(*argDestDir, pf)
+		err := buildFromJson(jf)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+}
+
+func buildFromJson(jf string) error {
+	r, err := os.Open(jf)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	var packfiles []*packfile
+	dec := json.NewDecoder(r)
+	for {
+		var p packfile
+		err = dec.Decode(&p)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		packfiles = append(packfiles, &p)
+	}
+	objNum := 0
+	for _, v := range packfiles {
+		objNum += len(v.Task)
+	}
+	fmt.Println(jf, objNum)
+	tempfn := path.Join(*argDestDir, "tmp-pack")
+	var writeToTemp = func(tfn string) (h plumbing.Hash, terr error) {
+		var pf *gitext.PackFile
+		terr = gitext.NewPack(tempfn)
+		if terr != nil {
+			return
+		}
+		defer pf.Close()
+
+		terr = pf.Head(objNum)
+		if terr != nil {
+			return
+		}
+		var doOne = func(v *packfile) error {
+			r, derr := os.Open(v.FileName)
+			if derr != nil {
+				return derr
+			}
+			defer r.Close()
+			for _, oe := range v.Task {
+				derr = r.Seek(oe.O, 0)
+				if derr != nil {
+					return derr
+				}
+				_, derr = pf.Do(r, int64(oe.S))
+				if derr != nil {
+					return derr
+				}
+			}
+
+		}
+		for _, v := range packfiles {
+			terr = doOne(v)
+			if terr != nil {
+				fmt.Println(err)
+				continue
+			}
+		}
+		h, terr = pf.Footer()
+		if terr != nil {
+			return
+		}
+		return
+	}
+	var hash plumbing.Hash
+	hash, err = writeToTemp(tempfn)
+	newfn := path.Join(*argDestDir, "pack-"+hash.String()+".pack")
+	err = os.Rename(tempfn, newfn)
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("git", "index-pack", newfn)
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
 }
