@@ -37,6 +37,8 @@ func main() {
 	switch *argMod {
 	case "dump":
 		dumpObj(tdb)
+	case "ls":
+		ls(tdb)
 	case "import":
 		importObj(tdb)
 	case "dedup":
@@ -178,7 +180,7 @@ func dumpObj(tdb *badgerdb.DB) {
 func dupObj(tdb *badgerdb.DB) {
 	ic := types.NewIntCounter(33)
 	sc := types.NewIntCounter(33)
-	s := tdb.NewHashSession()
+	s := tdb.NewHashSession("")
 	defer s.End()
 	var newEntry = func() badgerdb.Byter {
 		return &packext.ObjEntry{}
@@ -216,4 +218,12 @@ func dupObj(tdb *badgerdb.DB) {
 	fmt.Println("Res:", total, packed, ind, all)
 	ic.Dump()
 	sc.Dump()
+}
+
+func ls(tdb *badgerdb.DB) {
+	prefix := []byte(flag.Arg(0))
+	tdb.ForEach(prefix, func(k, v []byte) error {
+		fmt.Println(string(k), ":", string(v))
+		return nil
+	})
 }

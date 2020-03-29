@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/a4a881d4/gitcrawling/types"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/format/idxfile"
 )
@@ -25,7 +26,7 @@ type ObjEntry struct {
 	PackFile OriginPackFile
 }
 
-type OriginPackFile plumbing.Hash
+type OriginPackFile types.Hash
 
 type OriginPackFiles map[OriginPackFile]string
 
@@ -77,7 +78,7 @@ func (obj *ObjEntry) ToByte() []byte {
 	buf := make([]byte, 16)
 	binary.BigEndian.PutUint64(buf[:8], obj.Offset)
 	binary.BigEndian.PutUint32(buf[8:12], obj.Size)
-	binary.BigEndian.PutUint32(buf, obj.CRC32)
+	binary.BigEndian.PutUint32(buf[12:], obj.CRC32)
 	return buf
 }
 

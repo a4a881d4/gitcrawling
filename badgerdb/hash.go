@@ -16,21 +16,24 @@ func keyHashRef(h types.Hash) []byte {
 }
 
 type HashSession struct {
-	txn *badger.Txn
-	it  *badger.Iterator
-	db  *DB
+	txn    *badger.Txn
+	it     *badger.Iterator
+	db     *DB
+	prefix []byte
 }
 
-func (db *DB) NewHashSession() *HashSession {
+func (db *DB) NewHashSession(sub string) *HashSession {
 	txn := db.db.NewTransaction(false)
 	opts := badger.DefaultIteratorOptions
 	opts.PrefetchSize = 10
 	it := txn.NewIterator(opts)
-	it.Seek(HashPrefix)
+	prefix := append(HashPrefix, []byte(sub)...)
+	it.Seek(prefix)
 	return &HashSession{
-		db:  db,
-		it:  it,
-		txn: txn,
+		db:     db,
+		it:     it,
+		txn:    txn,
+		prefix: prefix,
 	}
 }
 
@@ -46,7 +49,7 @@ func (s *HashSession) End() {
 }
 
 func (s *HashSession) Next(prefixlen int, cb func(k, v []byte) error) error {
-	if !s.it.ValidForPrefix(HashPrefix) {
+	if !s.it.ValidForPrefix(s.prefix) {
 		return io.EOF
 	}
 	item := s.it.Item()

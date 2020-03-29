@@ -15,8 +15,7 @@ func NewDB(path string) (*DB, error) {
 	opts := badger.DefaultOptions(path).WithMaxTableSize(64 << 18)
 	db, err := badger.Open(opts)
 	if err != nil {
-		db.RunValueLogGC(0.7)
-		db, err = badger.Open(opts)
+		return nil, err
 	}
 	return &DB{db, nil}, err
 }
