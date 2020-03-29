@@ -45,6 +45,7 @@ func main() {
 	default:
 		importObj(tdb)
 		toJson(tdb)
+		fromJson()
 	}
 }
 
@@ -239,6 +240,7 @@ func buildFromJson(jf string) error {
 		var p packfile
 		err = dec.Decode(&p)
 		if err == io.EOF {
+			err = nil
 			break
 		}
 		if err != nil {
@@ -254,7 +256,7 @@ func buildFromJson(jf string) error {
 	tempfn := path.Join(*argDestDir, "tmp-pack")
 	var writeToTemp = func(tfn string) (h plumbing.Hash, terr error) {
 		var pf *gitext.PackFile
-		terr = gitext.NewPack(tempfn)
+		pf, terr = gitext.NewPack(tempfn)
 		if terr != nil {
 			return
 		}
@@ -265,27 +267,32 @@ func buildFromJson(jf string) error {
 			return
 		}
 		var doOne = func(v *packfile) error {
-			r, derr := os.Open(v.FileName)
+			pfn := strings.Replace(v.FileName, ".idx", ".pack", -1)
+			// fmt.Println("open", pfn)
+			r, derr := os.Open(pfn)
 			if derr != nil {
 				return derr
 			}
 			defer r.Close()
 			for _, oe := range v.Task {
-				derr = r.Seek(oe.O, 0)
+				_, derr = r.Seek(int64(oe.O), 0)
 				if derr != nil {
+					fmt.Println(1)
 					return derr
 				}
 				_, derr = pf.Do(r, int64(oe.S))
 				if derr != nil {
+					stat, _ := os.Stat(v.FileName)
+					fmt.Println(2, oe.O, oe.S, stat.Size())
 					return derr
 				}
 			}
-
+			return nil
 		}
 		for _, v := range packfiles {
 			terr = doOne(v)
 			if terr != nil {
-				fmt.Println(err)
+				fmt.Println(terr)
 				continue
 			}
 		}
@@ -297,6 +304,9 @@ func buildFromJson(jf string) error {
 	}
 	var hash plumbing.Hash
 	hash, err = writeToTemp(tempfn)
+	if err != nil {
+		return err
+	}
 	newfn := path.Join(*argDestDir, "pack-"+hash.String()+".pack")
 	err = os.Rename(tempfn, newfn)
 	if err != nil {
