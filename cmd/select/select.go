@@ -7,14 +7,19 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/a4a881d4/gitcrawling/badgerdb"
+	"github.com/a4a881d4/gitcrawling/gitext"
 	"github.com/a4a881d4/gitcrawling/packext"
 )
 
 var (
 	argDBDir   = flag.String("gitdb", "../temp/.gitdb", "The dir of db")
 	argDestDir = flag.String("dest", "../temp/copy", "The dir of db")
+	argMod     = flag.String("m", "import", "mode import,count,dump,dedup")
+	argGrp     = flag.Int("g", 256, "split")
 	all        = 0
 	dup        = 0
 )
@@ -27,13 +32,16 @@ func main() {
 		return
 	}
 	defer tdb.Close()
-	for i := 0; i < 256; i++ {
-		pf := fmt.Sprintf("%02x", i)
-		err = build(tdb, pf)
-		if err != nil {
-			fmt.Println(err)
-		}
+	switch *argMod {
+	case "json":
+		Json(tdb)
+	case "import":
+		importObj(tdb)
+	default:
+		importObj(tdb)
+		Json256(tdb)
 	}
+
 }
 
 type OE struct {
@@ -46,6 +54,32 @@ type packfile struct {
 	fd       io.ReaderAt
 	FileName string
 	Task     []OE
+}
+
+func Json(tdb *badgerdb.DB) {
+	var format string
+	var g int
+	switch *argGrp {
+	case 16:
+		format = "%01x"
+		g = 16
+	case 256:
+		format = "%02x"
+		g = 256
+	case 4096:
+		format = "%03x"
+		g = 4096
+	default:
+		format = "%02x"
+		g = 256
+	}
+	for i := 0; i < g; i++ {
+		pf := fmt.Sprintf(format, i)
+		err := build(tdb, pf)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 }
 
 func getFileFromDB(tdb *badgerdb.DB) (map[packext.OriginPackFile]*packfile, error) {
@@ -105,7 +139,7 @@ func build(tdb *badgerdb.DB, prefix string) error {
 	}
 	fmt.Println("Res:", all, dup)
 
-	wrfn := fmt.Sprintf("%s/%s.json", *argDestDir, flag.Arg(0))
+	wrfn := fmt.Sprintf("%s/%s.json", *argDestDir, prefix)
 	w, err := os.Create(wrfn)
 	if err != nil {
 		return err
@@ -123,4 +157,40 @@ func build(tdb *badgerdb.DB, prefix string) error {
 		}
 	}
 	return nil
+}
+
+func importObj(tdb *badgerdb.DB) {
+	tdb.NewSession()
+	defer tdb.EndSession()
+
+	var doSome = func(fn string) {
+		op, r, err := gitext.GetOffsetNoClassify(fn)
+		tdb.Put([]byte("file/"+op.String()), []byte(fn))
+		if err != nil {
+			fmt.Println(err)
+		}
+		for _, e := range r {
+			err = tdb.BPut(&e)
+			if err != nil {
+				fmt.Println(err)
+			}
+			all += 1
+		}
+	}
+	stat, err := os.Stat(flag.Arg(0))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if stat.IsDir() {
+		filepath.Walk(flag.Arg(0), func(path string, info os.FileInfo, err error) error {
+			if strings.Contains(path, ".idx") && strings.Contains(path, "pack-") {
+				doSome(path)
+			}
+			return nil
+		})
+	} else {
+		doSome(flag.Arg(0))
+	}
+	fmt.Println("All:", all)
 }
