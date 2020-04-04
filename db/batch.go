@@ -11,7 +11,7 @@ type BatchDB struct {
 }
 
 func NewBatchDB(db *DB) *BatchDB {
-	return &BatchDB{db.GetDB()}
+	return &BatchDB{db.GetDB(), nil}
 }
 
 func (self *BatchDB) Close() {

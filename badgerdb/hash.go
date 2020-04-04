@@ -67,7 +67,7 @@ func (s *HashSession) Next(prefixlen int, cb func(k, v []byte) error) error {
 	return nil
 }
 
-func (s *HashSession) NextGroup(prefixlen int, newitem func() Byter) (items []Byter, err error) {
+func (s *HashSession) NextGroup(prefixlen int, newitem func() types.Byter) (items []types.Byter, err error) {
 	var cb = func(k, v []byte) (cberr error) {
 		i := newitem()
 		cberr = i.SetKey(k)

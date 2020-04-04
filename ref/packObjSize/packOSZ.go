@@ -195,7 +195,7 @@ func dupObj(tdb *badgerdb.DB) {
 	sc := types.NewIntCounter(33)
 	s := tdb.NewHashSession("")
 	defer s.End()
-	var newEntry = func() badgerdb.Byter {
+	var newEntry = func() types.Byter {
 		return &packext.ObjEntry{}
 	}
 	var total, packed, small, ind, all int64
@@ -251,10 +251,7 @@ func import2Level(tdb *db.BatchDB) {
 			fmt.Println(err)
 		}
 		for _, e := range r {
-			err = tdb.BPut(&e)
-			if err != nil {
-				fmt.Println(err)
-			}
+			tdb.BPut(&e)
 			all += 1
 		}
 	}
