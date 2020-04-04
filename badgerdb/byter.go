@@ -1,21 +1,16 @@
 package badgerdb
 
-type Byter interface {
-	ToByte() []byte
-	FromByte(v []byte) error
-	Key() []byte
-	SetKey(k []byte) error
-}
+import "github.com/a4a881d4/gitcrawling/types"
 
-func (self *DB) BPut(e Byter) error {
+func (self *DB) BPut(e types.Byter) error {
 	return self.Put(e.Key(), e.ToByte())
 }
 
-func (self *DB) BGet(e Byter) error {
+func (self *DB) BGet(e types.Byter) error {
 	return self.Get(e.Key(), e.FromByte)
 }
 
-func (self *DB) GetRange(prefix []byte, n func() Byter) (es []Byter, err error) {
+func (self *DB) GetRange(prefix []byte, n func() types.Byter) (es []types.Byter, err error) {
 
 	var cb = func(k, v []byte) (cberr error) {
 		e := n()

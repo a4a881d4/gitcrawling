@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/a4a881d4/gitcrawling/badgerdb"
+	"github.com/a4a881d4/gitcrawling/db"
 	"github.com/a4a881d4/gitcrawling/gitext"
 	"github.com/a4a881d4/gitcrawling/packext"
 	"github.com/a4a881d4/gitcrawling/types"
@@ -27,6 +28,18 @@ var (
 
 func main() {
 	flag.Parse()
+
+	if *argMod == "importLevel" {
+		ldb, err := db.NewDB(*argDir + "/idx")
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		bdb := db.NewBatchDB(ldb)
+		defer bdb.Close()
+		import2Level(bdb)
+		return
+	}
 	tdb, err := badgerdb.NewDB(*argDir + "/objs")
 	if err != nil {
 		fmt.Println(err)
@@ -226,4 +239,39 @@ func ls(tdb *badgerdb.DB) {
 		fmt.Println(string(k), ":", string(v))
 		return nil
 	})
+}
+func import2Level(tdb *db.BatchDB) {
+
+	var doSome = func(fn string) {
+		tdb.NewSession()
+		defer tdb.EndSession()
+		op, r, err := gitext.GetOffsetNoClassify(fn)
+		tdb.Put([]byte("file/"+op.String()), []byte(fn))
+		if err != nil {
+			fmt.Println(err)
+		}
+		for _, e := range r {
+			err = tdb.BPut(&e)
+			if err != nil {
+				fmt.Println(err)
+			}
+			all += 1
+		}
+	}
+	stat, err := os.Stat(flag.Arg(0))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if stat.IsDir() {
+		filepath.Walk(flag.Arg(0), func(path string, info os.FileInfo, err error) error {
+			if strings.Contains(path, ".idx") && strings.Contains(path, "pack-") {
+				doSome(path)
+			}
+			return nil
+		})
+	} else {
+		doSome(flag.Arg(0))
+	}
+	fmt.Println("All:", all)
 }
