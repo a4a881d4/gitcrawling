@@ -71,7 +71,9 @@ func NewPackFiles(finder FileFinder) *PackFiles {
 	}
 }
 
-func (ps *PackFiles) Get(h types.Hash, e *ObjEntry) ([]byte, error) {
+func (ps *PackFiles) Get(e *ObjEntry) ([]byte, error) {
+	var h types.Hash
+	h =  types.Hash(e.PackFile)
 	if _, ok := ps.Opened[h]; !ok {
 		pf, err := ps.NewPackFile(h)
 		if err != nil {
@@ -90,7 +92,7 @@ func (ps *PackFiles) Get(h types.Hash, e *ObjEntry) ([]byte, error) {
 type FileMap map[types.Hash]string
 
 var (
-	DefaultMap FileMap
+	DefaultMap FileMap = make(map[types.Hash]string)
 )
 
 func (m FileMap) Hash2FileName(h types.Hash) (string, error) {

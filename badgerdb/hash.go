@@ -37,6 +37,10 @@ func (db *DB) NewHashSession(sub string) *HashSession {
 	}
 }
 
+func (db *DB) NewHashGeter(sub string) types.SessionedGeter {
+	return db.NewHashSession(sub)
+}
+
 func (s *HashSession) End() {
 	if s.it != nil {
 		s.it.Close()

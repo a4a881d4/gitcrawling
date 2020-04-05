@@ -121,3 +121,17 @@ func (obj *ObjEntry) SetKey(v []byte) error {
 	copy(obj.PackFile[:], f)
 	return nil
 }
+
+type Entries []*ObjEntry
+
+func(es Entries) Len() int {
+	return len(es)
+}
+
+func(es Entries) Less(i,j int) bool {
+	return es[i].Size<es[j].Size
+}
+
+func(es Entries) Swap(i,j int) {
+	es[i],es[j] = es[j],es[i]
+}
