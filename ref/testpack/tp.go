@@ -57,6 +57,13 @@ func Hash(tdb *badgerdb.DB) {
 		return
 	}
 	fmt.Println(len(r))
+	s := packext.NewScanner(r)
+	head,err := s.Header()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(head)
 }
 
 func ls(tdb *badgerdb.DB) {
