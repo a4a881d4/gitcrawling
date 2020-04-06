@@ -1,10 +1,15 @@
 package packext
 
 import (
-	"sync"
+	"bytes"
+	"compress/zlib"
+	"fmt"
 	"io"
+	"sync"
+
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/format/packfile"
+	"gopkg.in/src-d/go-git.v4/utils/ioutil"
 )
 
 const (
@@ -17,46 +22,53 @@ const (
 	maskContinue    = 0x80       // 1000 0000
 	maskLength      = uint8(127) // 0111 1111
 	maskType        = uint8(112) // 0111 0000
+)
+
+var (
 	zlibInitBytes = []byte{0x78, 0x9c, 0x01, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01}
 )
 
 type Scanner struct {
 	RawObj []byte
-	pos int
+	pos    int
 }
+
 func NewScanner(o []byte) *Scanner {
 	return &Scanner{
-		RawObj:o,
+		RawObj: o,
 	}
 }
-func (s *Scanner) ReadByte() (byte,error) {
+func (s *Scanner) ReadByte() (byte, error) {
 	if s.pos >= len(s.RawObj) {
-		return byte(0),io.EOF
+		return byte(0), io.EOF
 	}
 	c := s.RawObj[s.pos]
 	s.pos++
-	return c,nil
+	return c, nil
 }
-func(s *Scanner) readHash() (plumbing.Hash, error) {
+func (s *Scanner) Reader() io.Reader {
+	return bytes.NewReader(s.RawObj[s.pos:])
+}
+func (s *Scanner) readHash() (plumbing.Hash, error) {
 	var h plumbing.Hash
-	if s.pos+20>len(s.RawObj) {
+	if s.pos+20 > len(s.RawObj) {
 		return plumbing.ZeroHash, io.EOF
 	}
-	copy(h[:],s.RawObj[s.pos:s.pos+20])
+	copy(h[:], s.RawObj[s.pos:s.pos+20])
 	s.pos += 20
 	return h, nil
 }
-func(s *Scanner) readVariableWidthInt() (int64, error) {
+func (s *Scanner) readVariableWidthInt() (int64, error) {
 	var c byte
 	var err error
-	if c,err =s.ReadByte(); err != nil {
+	if c, err = s.ReadByte(); err != nil {
 		return 0, err
 	}
 
 	var v = int64(c & maskLength)
 	for c&maskContinue > 0 {
 		v++
-		if c,err =s.ReadByte(); err != nil {
+		if c, err = s.ReadByte(); err != nil {
 			return 0, err
 		}
 
@@ -145,16 +157,17 @@ var zlibReaderPool = sync.Pool{
 		return r
 	},
 }
-var bufPool = sync.Pool{
+var byteSlicePool = sync.Pool{
 	New: func() interface{} {
 		return bytes.NewBuffer(nil)
 	},
 }
+
 func (s *Scanner) copyObject(w io.Writer) (n int64, err error) {
 	zr := zlibReaderPool.Get().(io.ReadCloser)
 	defer zlibReaderPool.Put(zr)
-
-	if err = zr.(zlib.Resetter).Reset(s.r, nil); err != nil {
+	sr := s.Reader()
+	if err = zr.(zlib.Resetter).Reset(sr, nil); err != nil {
 		return 0, fmt.Errorf("zlib reset error: %s", err)
 	}
 
