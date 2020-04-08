@@ -187,11 +187,10 @@ func GetOffsetNoClassify(idxf string) (op packext.OriginPackFile, objs []packext
 
 	for _, e := range objs {
 		if e.OHeader.Type == plumbing.OFSDeltaObject {
-			pos := uint64(e.OHeader.Offset - e.OHeader.OffsetReference)
-			if base, ok := mobjs[pos]; ok {
+			if base, ok := mobjs[uint64(e.OHeader.OffsetReference)]; ok {
 				copy(e.OHeader.Reference[:], base.Hash[:])
 			} else {
-				fmt.Println("Miss base object of a OFSDeltaObject")
+				fmt.Println("Miss base object of a OFSDeltaObject", e.OHeader.Offset, e.OHeader.OffsetReference)
 			}
 		}
 	}

@@ -100,9 +100,9 @@ func (obj *ObjEntry) FromByte(v []byte) error {
 func (obj *ObjEntry) Key() []byte {
 	var s = obj.OHeader.Type.String() + "-"
 	if obj.OHeader.Type.IsDelta() {
-		s = s[:4] + obj.Hash.String() + "/" + obj.OHeader.Reference.String() + "/" + plumbing.Hash(obj.PackFile).String()
+		s = s[:4] + "/" + obj.Hash.String() + "/" + obj.OHeader.Reference.String() + "/" + plumbing.Hash(obj.PackFile).String()
 	} else {
-		s = s[:4] + obj.Hash.String() + "/" + plumbing.Hash(obj.PackFile).String()
+		s = s[:4] + "/" + obj.Hash.String() + "/" + plumbing.Hash(obj.PackFile).String()
 	}
 	return []byte(s)
 }

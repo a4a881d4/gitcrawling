@@ -46,7 +46,7 @@ func importObj(tdb *badgerdb.DB) {
 		op, r, err := gitext.GetOffsetNoClassify(fn)
 		tdb.Put([]byte("file/"+op.String()), []byte(fn))
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println(err, fn)
 		}
 		for _, e := range r {
 			err = tdb.BPut(&e)
