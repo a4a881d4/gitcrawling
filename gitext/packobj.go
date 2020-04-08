@@ -184,14 +184,27 @@ func GetOffsetNoClassify(idxf string) (op packext.OriginPackFile, objs []packext
 		}
 		last = e
 	}
-
-	for _, e := range objs {
+	var getRealType func(uint64) plumbing.ObjectType
+	getRealType = func(off uint64) plumbing.ObjectType {
+		if base, ok := mobjs[off]; ok {
+			if base.OHeader.Type.IsDelta() {
+				return getRealType(uint64(base.OHeader.OffsetReference))
+			} else {
+				return base.OHeader.Type
+			}
+		}
+		return plumbing.AnyObject
+	}
+	for k, e := range objs {
 		if e.OHeader.Type == plumbing.OFSDeltaObject {
 			if base, ok := mobjs[uint64(e.OHeader.OffsetReference)]; ok {
 				copy(e.OHeader.Reference[:], base.Hash[:])
+				objs[k].RealType = getRealType(uint64(e.OHeader.OffsetReference))
 			} else {
 				fmt.Println("Miss base object of a OFSDeltaObject", e.OHeader.Offset, e.OHeader.OffsetReference)
 			}
+		} else {
+			objs[k].RealType = e.OHeader.Type
 		}
 	}
 	return

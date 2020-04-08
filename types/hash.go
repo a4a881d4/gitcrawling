@@ -9,5 +9,7 @@ func (h Hash) String() string {
 }
 
 type PackDataGeter interface {
-	Get(Hash) ([]byte, error)
+	Get(Hash) ([]byte, Hash, error)
 }
+
+var ZeroHash Hash

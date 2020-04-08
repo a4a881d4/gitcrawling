@@ -26,6 +26,7 @@ type ObjEntry struct {
 	Size     uint32
 	PackFile OriginPackFile
 	OHeader  *packfile.ObjectHeader
+	RealType plumbing.ObjectType
 }
 
 type OriginPackFile types.Hash
@@ -98,11 +99,10 @@ func (obj *ObjEntry) FromByte(v []byte) error {
 }
 
 func (obj *ObjEntry) Key() []byte {
-	var s = obj.OHeader.Type.String() + "-"
+	var t = obj.RealType.String() + "-"
+	s := "hash" + "/" + obj.Hash.String() + "/" + plumbing.Hash(obj.PackFile).String() + "/" + t[:4]
 	if obj.OHeader.Type.IsDelta() {
-		s = s[:4] + "/" + obj.Hash.String() + "/" + obj.OHeader.Reference.String() + "/" + plumbing.Hash(obj.PackFile).String()
-	} else {
-		s = s[:4] + "/" + obj.Hash.String() + "/" + plumbing.Hash(obj.PackFile).String()
+		s = s + "/" + obj.OHeader.Reference.String()
 	}
 	return []byte(s)
 }
@@ -113,19 +113,19 @@ func (obj *ObjEntry) SetKey(v []byte) error {
 	if obj.OHeader == nil {
 		obj.OHeader = &packfile.ObjectHeader{}
 	}
-	switch ss[0] {
+	switch ss[3] {
 	case "comm":
-		obj.OHeader.Type = plumbing.CommitObject
+		obj.RealType = plumbing.CommitObject
 	case "tree":
-		obj.OHeader.Type = plumbing.TreeObject
+		obj.RealType = plumbing.TreeObject
 	case "tag-":
-		obj.OHeader.Type = plumbing.TagObject
+		obj.RealType = plumbing.TagObject
 	case "blob":
-		obj.OHeader.Type = plumbing.BlobObject
+		obj.RealType = plumbing.BlobObject
 	case "ofs-":
-		obj.OHeader.Type = plumbing.OFSDeltaObject
+		obj.RealType = plumbing.OFSDeltaObject
 	case "ref-":
-		obj.OHeader.Type = plumbing.REFDeltaObject
+		obj.RealType = plumbing.REFDeltaObject
 	default:
 		return ErrKey
 	}
@@ -138,14 +138,17 @@ func (obj *ObjEntry) SetKey(v []byte) error {
 	if err != nil {
 		return err
 	}
-	if obj.OHeader.Type.IsDelta() {
-		copy(obj.OHeader.Reference[:], h)
-		h, err = hex.DecodeString(ss[3])
+	copy(obj.PackFile[:], h)
+	if len(ss) == 5 {
+		h, err = hex.DecodeString(ss[4])
 		if err != nil {
 			return err
 		}
+		obj.OHeader.Type = plumbing.REFDeltaObject
+		copy(obj.OHeader.Reference[:], h)
+	} else {
+		obj.OHeader.Type = obj.RealType
 	}
-	copy(obj.PackFile[:], h)
 	return nil
 }
 

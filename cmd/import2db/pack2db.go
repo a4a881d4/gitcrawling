@@ -10,6 +10,8 @@ import (
 
 	"github.com/a4a881d4/gitcrawling/badgerdb"
 	"github.com/a4a881d4/gitcrawling/gitext"
+	"github.com/a4a881d4/gitcrawling/packext"
+	"github.com/a4a881d4/gitcrawling/types"
 )
 
 var (
@@ -30,11 +32,15 @@ func main() {
 
 	switch *argMod {
 	case "ls":
-		ls(tdb)
+		ls(tdb, []byte(flag.Arg(0)))
 	case "import":
 		importObj(tdb)
+	case "cat":
+		catObj(tdb)
+	case "hash":
+		Hash(tdb)
 	default:
-		ls(tdb)
+		ls(tdb, []byte(flag.Arg(0)))
 	}
 }
 
@@ -74,10 +80,57 @@ func importObj(tdb *badgerdb.DB) {
 	fmt.Println("All:", all)
 }
 
-func ls(tdb *badgerdb.DB) {
-	prefix := []byte(flag.Arg(0))
+func ls(tdb *badgerdb.DB, prefix []byte) []*packext.ObjEntry {
+	var res = []*packext.ObjEntry{}
 	tdb.ForEach(prefix, func(k, v []byte) error {
 		fmt.Println(string(k), ":", string(v))
+		var oe = packext.ObjEntry{}
+		oe.SetKey(k)
+		res = append(res, &oe)
 		return nil
 	})
+	return res
+}
+
+func catObj(tdb *badgerdb.DB) {
+	oes := ls(tdb, []byte("hash/"+flag.Arg(0)))
+
+	pf, err := packext.NewFileDirPFDB(tdb, *argDir)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	s := packext.NewObjectGet(pf)
+	for _, oe := range oes {
+		body, err := s.Body(types.Hash(oe.Hash))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(oe, oe.OHeader)
+		fmt.Println(string(body))
+	}
+}
+
+func Hash(tdb *badgerdb.DB) {
+	oes := ls(tdb, []byte("hash/"+flag.Arg(0)))
+
+	pf, err := packext.NewFileDirPFDB(tdb, *argDir)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	s := packext.NewObjectGet(pf)
+	for _, oe := range oes {
+		head, err := s.HeaderByHash(types.Hash(oe.Hash))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(oe, oe.OHeader)
+		fmt.Println(head)
+	}
+
 }
