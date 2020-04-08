@@ -11,6 +11,7 @@ import (
 	"github.com/a4a881d4/gitcrawling/types"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/format/idxfile"
+	"gopkg.in/src-d/go-git.v4/plumbing/format/packfile"
 )
 
 var (
@@ -24,6 +25,7 @@ type ObjEntry struct {
 	idxfile.Entry
 	Size     uint32
 	PackFile OriginPackFile
+	OHeader  *packfile.ObjectHeader
 }
 
 type OriginPackFile types.Hash
@@ -96,17 +98,35 @@ func (obj *ObjEntry) FromByte(v []byte) error {
 }
 
 func (obj *ObjEntry) Key() []byte {
-	s := "hash/" + obj.Hash.String() + "/" + plumbing.Hash(obj.PackFile).String()
+	var s = obj.OHeader.Type.String() + "-"
+	if obj.OHeader.Type.IsDelta() {
+		s = s[:4] + obj.Hash.String() + "/" + obj.OHeader.Reference.String() + "/" + plumbing.Hash(obj.PackFile).String()
+	} else {
+		s = s[:4] + obj.Hash.String() + "/" + plumbing.Hash(obj.PackFile).String()
+	}
 	return []byte(s)
 }
 
 func (obj *ObjEntry) SetKey(v []byte) error {
 	s := string(v)
 	ss := strings.Split(s, "/")
-	if len(ss) != 3 {
-		return ErrKey
+	if obj.OHeader == nil {
+		obj.OHeader = &packfile.ObjectHeader{}
 	}
-	if ss[0] != "hash" {
+	switch ss[0] {
+	case "comm":
+		obj.OHeader.Type = plumbing.CommitObject
+	case "tree":
+		obj.OHeader.Type = plumbing.TreeObject
+	case "tag-":
+		obj.OHeader.Type = plumbing.TagObject
+	case "blob":
+		obj.OHeader.Type = plumbing.BlobObject
+	case "ofs-":
+		obj.OHeader.Type = plumbing.OFSDeltaObject
+	case "ref-":
+		obj.OHeader.Type = plumbing.REFDeltaObject
+	default:
 		return ErrKey
 	}
 	h, err := hex.DecodeString(ss[1])
@@ -114,24 +134,31 @@ func (obj *ObjEntry) SetKey(v []byte) error {
 		return err
 	}
 	copy(obj.Hash[:], h)
-	f, err := hex.DecodeString(ss[2])
+	h, err = hex.DecodeString(ss[2])
 	if err != nil {
 		return err
 	}
-	copy(obj.PackFile[:], f)
+	if obj.OHeader.Type.IsDelta() {
+		copy(obj.OHeader.Reference[:], h)
+		h, err = hex.DecodeString(ss[3])
+		if err != nil {
+			return err
+		}
+	}
+	copy(obj.PackFile[:], h)
 	return nil
 }
 
 type Entries []*ObjEntry
 
-func(es Entries) Len() int {
+func (es Entries) Len() int {
 	return len(es)
 }
 
-func(es Entries) Less(i,j int) bool {
-	return es[i].Size<es[j].Size
+func (es Entries) Less(i, j int) bool {
+	return es[i].Size < es[j].Size
 }
 
-func(es Entries) Swap(i,j int) {
-	es[i],es[j] = es[j],es[i]
+func (es Entries) Swap(i, j int) {
+	es[i], es[j] = es[j], es[i]
 }

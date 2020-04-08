@@ -13,6 +13,7 @@ import (
 	"github.com/a4a881d4/gitcrawling/packext"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/format/idxfile"
+	"gopkg.in/src-d/go-git.v4/plumbing/format/packfile"
 	"gopkg.in/src-d/go-git.v4/utils/binary"
 )
 
@@ -133,17 +134,24 @@ func GetOffsetNoClassify(idxf string) (op packext.OriginPackFile, objs []packext
 		return
 	}
 	var pfSize uint64
-	stat, err := os.Stat(strings.Replace(idxf, ".idx", ".pack", -1))
+	packf := strings.Replace(idxf, ".idx", ".pack", -1)
+	stat, err := os.Stat(packf)
 	if err != nil {
 		return
 	}
 	pfSize = uint64(stat.Size())
-
+	pf, err := os.Open(packf)
+	if err != nil {
+		return
+	}
+	defer pf.Close()
+	scanner := packfile.NewScanner(pf)
 	iter, err := idx.EntriesByOffset()
 	if err != nil {
 		return
 	}
 	var last, e *idxfile.Entry
+	var mobjs = make(map[uint64]*packext.ObjEntry)
 	last = nil
 	var Add = func(size uint64) {
 		if last == nil {
@@ -151,8 +159,14 @@ func GetOffsetNoClassify(idxf string) (op packext.OriginPackFile, objs []packext
 		}
 
 		var objentry = op.NewEntry(last)
+		var errs error
+		objentry.OHeader, errs = scanner.SeekObjectHeader(int64(last.Offset))
+		if errs != nil {
+			fmt.Println(errs)
+		}
 		objentry.Size = uint32(size)
 		objs = append(objs, *objentry)
+		mobjs[last.Offset] = objentry
 	}
 
 	for {
@@ -171,6 +185,16 @@ func GetOffsetNoClassify(idxf string) (op packext.OriginPackFile, objs []packext
 		last = e
 	}
 
+	for _, e := range objs {
+		if e.OHeader.Type == plumbing.OFSDeltaObject {
+			pos := uint64(e.OHeader.Offset - e.OHeader.OffsetReference)
+			if base, ok := mobjs[pos]; ok {
+				copy(e.OHeader.Reference[:], base.Hash[:])
+			} else {
+				fmt.Println("Miss base object of a OFSDeltaObject")
+			}
+		}
+	}
 	return
 }
 

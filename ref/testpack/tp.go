@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"path"
 
 	"github.com/a4a881d4/gitcrawling/packext"
 	"github.com/a4a881d4/gitcrawling/types"
@@ -11,7 +12,7 @@ import (
 )
 
 var (
-	argDir = flag.String("o", "../temp/.gitdb", "The dir story")
+	argDir = flag.String("o", "../temp", "The dir story")
 	argMod = flag.String("m", "ls", "mode import,count,dump,dedup")
 	all    = 0
 	dup    = 0
@@ -20,7 +21,7 @@ var (
 func main() {
 	flag.Parse()
 
-	tdb, err := badgerdb.NewDB(*argDir + "/.gitdb/objs")
+	tdb, err := badgerdb.NewDB(path.Join(*argDir, ".gitdb", "objs"))
 	if err != nil {
 		fmt.Println(err)
 		return
