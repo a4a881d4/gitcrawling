@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -39,6 +41,18 @@ func main() {
 		catObj(tdb)
 	case "hash":
 		Hash(tdb)
+	case "hashfile":
+		if m, err := group(tdb, 3, 1); err != nil {
+			fmt.Println(err)
+		} else {
+			if js, err := json.MarshalIndent(m, "", "  "); err != nil {
+				fmt.Println(err)
+			} else {
+				if err = ioutil.WriteFile(path.Join(*argDir, ".gitdb", "hash"), js, 0644); err != nil {
+					fmt.Println(err)
+				}
+			}
+		}
 	default:
 		ls(tdb, []byte(flag.Arg(0)))
 	}
@@ -83,7 +97,6 @@ func importObj(tdb *badgerdb.DB) {
 func ls(tdb *badgerdb.DB, prefix []byte) []*packext.ObjEntry {
 	var res = []*packext.ObjEntry{}
 	tdb.ForEach(prefix, func(k, v []byte) error {
-		fmt.Println(string(k), ":", string(v))
 		var oe = packext.ObjEntry{}
 		oe.SetKey(k)
 		res = append(res, &oe)
@@ -108,7 +121,6 @@ func catObj(tdb *badgerdb.DB) {
 			fmt.Println(err)
 			return
 		}
-		fmt.Println(oe, oe.OHeader)
 		fmt.Println(string(body))
 	}
 }
@@ -132,5 +144,18 @@ func Hash(tdb *badgerdb.DB) {
 		fmt.Println(oe, oe.OHeader)
 		fmt.Println(head)
 	}
+}
 
+func group(tdb *badgerdb.DB, idx, pos int) (map[string][]string, error) {
+	r := make(map[string][]string)
+	err := tdb.ForEach([]byte("hash/"), func(k, v []byte) error {
+		ss := strings.Split(string(k), "/")
+		if len(ss) > idx && len(ss) > pos {
+			r[ss[idx]] = append(r[ss[idx]], ss[pos])
+			return nil
+		} else {
+			return fmt.Errorf("Bad key %s", string(k))
+		}
+	})
+	return r, err
 }
