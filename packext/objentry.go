@@ -31,6 +31,18 @@ type ObjEntry struct {
 
 type OriginPackFile types.Hash
 
+func (a OriginPackFile) Less(b OriginPackFile) bool {
+	for i := 0; i < 20; i++ {
+		if a[i] < b[i] {
+			return true
+		}
+		if a[i] > b[i] {
+			return false
+		}
+	}
+	return false
+}
+
 type OriginPackFiles map[OriginPackFile]string
 
 func NewOriginPackFiles() OriginPackFiles {
@@ -154,12 +166,21 @@ func (obj *ObjEntry) SetKey(v []byte) error {
 
 type Entries []*ObjEntry
 
+var SortMode = "size"
+
 func (es Entries) Len() int {
 	return len(es)
 }
 
 func (es Entries) Less(i, j int) bool {
-	return es[i].Size < es[j].Size
+	switch SortMode {
+	case "size":
+		return es[i].Size < es[j].Size
+	case "file":
+		return es[i].PackFile.Less(es[j].PackFile)
+	default:
+		return es[i].PackFile.Less(es[j].PackFile)
+	}
 }
 
 func (es Entries) Swap(i, j int) {

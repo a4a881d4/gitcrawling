@@ -1,7 +1,9 @@
 package badgerdb
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/a4a881d4/gitcrawling/types"
 	"github.com/dgraph-io/badger"
@@ -87,4 +89,17 @@ func (s *HashSession) NextGroup(prefixlen int, newitem func() types.Byter) (item
 	}
 	err = s.Next(prefixlen, cb)
 	return
+}
+func (tdb *DB) Group(idx, pos int) (map[string][]string, error) {
+	r := make(map[string][]string)
+	err := tdb.ForEach([]byte("hash/"), func(k, v []byte) error {
+		ss := strings.Split(string(k), "/")
+		if len(ss) > idx && len(ss) > pos {
+			r[ss[idx]] = append(r[ss[idx]], ss[pos])
+			return nil
+		} else {
+			return fmt.Errorf("Bad key %s", string(k))
+		}
+	})
+	return r, err
 }

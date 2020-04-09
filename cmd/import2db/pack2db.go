@@ -44,17 +44,8 @@ func main() {
 	case "hash":
 		Hash(tdb)
 	case "hashfile":
-		if m, err := group(tdb, 3, 1); err != nil {
-			fmt.Println(err)
-		} else {
-			if js, err := json.MarshalIndent(m, "", "  "); err != nil {
-				fmt.Println(err)
-			} else {
-				if err = ioutil.WriteFile(path.Join(*argDir, ".gitdb", "hash"), js, 0644); err != nil {
-					fmt.Println(err)
-				}
-			}
-		}
+		HashFile(tdb)
+
 	default:
 		ls(tdb, []byte(flag.Arg(0)))
 	}
@@ -170,16 +161,16 @@ func Hash(tdb *badgerdb.DB) {
 	}
 }
 
-func group(tdb *badgerdb.DB, idx, pos int) (map[string][]string, error) {
-	r := make(map[string][]string)
-	err := tdb.ForEach([]byte("hash/"), func(k, v []byte) error {
-		ss := strings.Split(string(k), "/")
-		if len(ss) > idx && len(ss) > pos {
-			r[ss[idx]] = append(r[ss[idx]], ss[pos])
-			return nil
+func HashFile(tdb *badgerdb.DB) {
+	if m, err := tdb.Group(3, 1); err != nil {
+		fmt.Println(err)
+	} else {
+		if js, err := json.MarshalIndent(m, "", "  "); err != nil {
+			fmt.Println(err)
 		} else {
-			return fmt.Errorf("Bad key %s", string(k))
+			if err = ioutil.WriteFile(path.Join(*argDir, ".gitdb", "hash"), js, 0644); err != nil {
+				fmt.Println(err)
+			}
 		}
-	})
-	return r, err
+	}
 }

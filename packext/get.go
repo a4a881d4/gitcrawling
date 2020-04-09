@@ -3,6 +3,7 @@ package packext
 import (
 	"bytes"
 	"fmt"
+	"io"
 
 	"github.com/a4a881d4/gitcrawling/types"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -10,8 +11,10 @@ import (
 )
 
 type ObjectGet struct {
-	g types.PackDataGeter
-	s *packfile.Scanner
+	g    types.PackDataGeter
+	s    *packfile.Scanner
+	raw  []byte
+	head *packfile.ObjectHeader
 }
 
 func NewObjectGet(g types.PackDataGeter) *ObjectGet {
@@ -25,6 +28,7 @@ func (og *ObjectGet) Get(oh types.Hash) ([]byte, types.Hash, error) {
 	if err != nil {
 		return []byte{}, types.ZeroHash, err
 	}
+	og.raw = raw
 	og.s = packfile.NewScanner(bytes.NewReader(raw))
 	return raw, base, nil
 }
@@ -43,13 +47,14 @@ func (og *ObjectGet) HeaderByHash(oh types.Hash) (*packfile.ObjectHeader, error)
 		return nil, err
 	}
 	if head.Type.IsDelta() {
-		if base != types.ZeroHash {
+		if base != types.ZeroHash && head.Type == plumbing.OFSDeltaObject {
 			head.Type = plumbing.REFDeltaObject
 			copy(head.Reference[:], base[:])
 		} else {
 			return nil, fmt.Errorf("Miss Base")
 		}
 	}
+	og.head = head
 	return head, nil
 }
 
@@ -82,4 +87,12 @@ func (og *ObjectGet) Body(oh types.Hash) ([]byte, error) {
 		return patched, nil
 	}
 	return rbuf, nil
+}
+func (og *ObjectGet) Reader() io.Reader {
+	buf := og.raw
+	buf = skipHead(buf)
+	if og.head.Type.IsDelta() {
+		buf = skipHead(buf)
+	}
+	return bytes.NewReader(buf)
 }
