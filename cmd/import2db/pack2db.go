@@ -12,8 +12,10 @@ import (
 
 	"github.com/a4a881d4/gitcrawling/badgerdb"
 	"github.com/a4a881d4/gitcrawling/gitext"
+	"github.com/a4a881d4/gitcrawling/objext"
 	"github.com/a4a881d4/gitcrawling/packext"
 	"github.com/a4a881d4/gitcrawling/types"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 var (
@@ -121,7 +123,23 @@ func catObj(tdb *badgerdb.DB) {
 			fmt.Println(err)
 			return
 		}
-		fmt.Println(string(body))
+		o := objext.NewBytesObject(body, oe)
+		switch oe.RealType {
+		case plumbing.CommitObject:
+			c, err := objext.DecodeCommit(o)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Println(c)
+			}
+		case plumbing.TreeObject:
+			t, err := objext.DecodeTree(o)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Println(objext.Tree2String(t))
+			}
+		}
 	}
 }
 
