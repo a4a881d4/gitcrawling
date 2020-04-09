@@ -108,7 +108,11 @@ func ls(tdb *badgerdb.DB, prefix []byte) []*packext.ObjEntry {
 }
 
 func catObj(tdb *badgerdb.DB) {
-	oes := ls(tdb, []byte("hash/"+flag.Arg(0)))
+	prefix := "hash/"
+	if len(flag.Args()) != 0 {
+		prefix += flag.Arg(0)
+	}
+	oes := ls(tdb, []byte(prefix))
 
 	pf, err := packext.NewFileDirPFDB(tdb, *argDir)
 	if err != nil {
@@ -137,7 +141,9 @@ func catObj(tdb *badgerdb.DB) {
 			if err != nil {
 				fmt.Println(err)
 			} else {
-				fmt.Println(objext.Tree2String(t))
+				fmt.Println(oe.RealType.String(), oe.Hash.String())
+				ts := objext.Tree2String(t)
+				fmt.Println(ts)
 			}
 		}
 	}

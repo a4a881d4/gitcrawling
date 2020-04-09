@@ -28,8 +28,8 @@ type EncodedObject interface {
 
 func Tree2String(t *object.Tree) string {
 	r := ""
-	for _, v := range t.Entries {
-		r += fmt.Sprintln(v.Name, v.Hash.String(), v.Mode.String())
+	for k, v := range t.Entries {
+		r += fmt.Sprintf("%04d %s %s %s\n", k, v.Hash.String(), v.Mode.String(), v.Name)
 	}
 	return r
 }
@@ -41,9 +41,6 @@ func DecodeTree(o EncodedObject) (t *object.Tree, err error) {
 	}
 
 	t.Hash = o.Hash()
-	if o.Size() == 0 {
-		return
-	}
 
 	t.Entries = nil
 	var reader io.Reader
@@ -58,6 +55,7 @@ func DecodeTree(o EncodedObject) (t *object.Tree, err error) {
 	for {
 		var str string
 		str, err = r.ReadString(' ')
+		// fmt.Println(str)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -89,7 +87,7 @@ func DecodeTree(o EncodedObject) (t *object.Tree, err error) {
 			Name: baseName,
 		})
 	}
-
+	err = nil
 	return
 }
 
