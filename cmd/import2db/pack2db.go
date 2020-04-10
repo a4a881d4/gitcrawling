@@ -162,14 +162,40 @@ func Hash(tdb *badgerdb.DB) {
 }
 
 func HashFile(tdb *badgerdb.DB) {
-	if m, err := tdb.Group(3, 1); err != nil {
+	var m, mbase map[string][]string
+	var err error
+	if m, err = tdb.Group(3, 1); err != nil {
 		fmt.Println(err)
 	} else {
-		if js, err := json.MarshalIndent(m, "", "  "); err != nil {
+		var js []byte
+		if js, err = json.MarshalIndent(m, "", "  "); err != nil {
 			fmt.Println(err)
 		} else {
 			if err = ioutil.WriteFile(path.Join(*argDir, ".gitdb", "hash"), js, 0644); err != nil {
 				fmt.Println(err)
+			}
+		}
+	}
+	if mbase, err = tdb.Group(3, 4); err != nil {
+		fmt.Println(err)
+	} else {
+		var js []byte
+		if js, err = json.MarshalIndent(mbase, "", "  "); err != nil {
+			fmt.Println(err)
+		} else {
+			if err = ioutil.WriteFile(path.Join(*argDir, ".gitdb", "base"), js, 0644); err != nil {
+				fmt.Println(err)
+			}
+		}
+		for k, v := range mbase {
+			dedup := make(map[string]bool)
+			for _, ks := range m[k] {
+				dedup[ks] = true
+			}
+			for _, bs := range v {
+				if _, ok := dedup[bs]; !ok {
+					fmt.Println("Miss delta base", bs)
+				}
 			}
 		}
 	}

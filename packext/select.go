@@ -56,10 +56,11 @@ func (m *SelectFile) Do() (err error) {
 		}
 		c++
 		if c > progress*l/100 {
-			progress++
 			fmt.Printf("\033[u\033[K(%3d%%,%d/%d)", progress, c, l)
+			progress++
 		}
 	}
+	fmt.Printf("\033[u\033[K(%3d%%,%d/%d)", progress, c, l)
 	fmt.Printf("\n")
 	err = nil
 	return

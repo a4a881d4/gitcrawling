@@ -1,7 +1,6 @@
 package badgerdb
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -96,10 +95,8 @@ func (tdb *DB) Group(idx, pos int) (map[string][]string, error) {
 		ss := strings.Split(string(k), "/")
 		if len(ss) > idx && len(ss) > pos {
 			r[ss[idx]] = append(r[ss[idx]], ss[pos])
-			return nil
-		} else {
-			return fmt.Errorf("Bad key %s", string(k))
 		}
+		return nil
 	})
 	return r, err
 }
