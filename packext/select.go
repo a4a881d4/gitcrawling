@@ -1,6 +1,7 @@
 package packext
 
 import (
+	"fmt"
 	"path"
 
 	"github.com/a4a881d4/gitcrawling/types"
@@ -34,6 +35,10 @@ func (m *SelectFile) Head() error {
 }
 
 func (m *SelectFile) Do() (err error) {
+	var c = 0
+	var l = len(m.objs)
+	var progress = 0
+	fmt.Printf("Progress:\033[s")
 	for _, hs := range m.objs {
 		hash := types.Hash(plumbing.NewHash(hs))
 		var head *packfile.ObjectHeader
@@ -49,7 +54,13 @@ func (m *SelectFile) Do() (err error) {
 		if err != nil {
 			return
 		}
+		c++
+		if c > progress*l/100 {
+			progress++
+			fmt.Printf("\033[u\033[K(%3d%%,%d/%d)", progress, c, l)
+		}
 	}
+	fmt.Printf("\n")
 	err = nil
 	return
 }

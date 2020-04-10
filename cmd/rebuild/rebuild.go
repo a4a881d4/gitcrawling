@@ -33,7 +33,17 @@ func main() {
 	}
 	WriteToPack(m, *argMod, tdb)
 }
-
+func dedup(os []string) []string {
+	var m = make(map[string]bool)
+	for _, o := range os {
+		m[o] = true
+	}
+	var r = []string{}
+	for k, _ := range m {
+		r = append(r, k)
+	}
+	return r
+}
 func WriteToPack(m map[string][]string, t string, tdb *badgerdb.DB) {
 	pf, err := packext.NewFileDirPFDB(tdb, path.Join(*argDir, "packs"))
 	if err != nil {
@@ -43,6 +53,7 @@ func WriteToPack(m map[string][]string, t string, tdb *badgerdb.DB) {
 
 	g := packext.NewObjectGet(pf)
 	if objs, ok := m[t]; ok {
+		objs = dedup(objs)
 		if s, err := packext.NewSelectFile(path.Join(*argDir, t), objs, g); err != nil {
 			fmt.Println(err)
 			return
