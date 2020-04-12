@@ -59,12 +59,12 @@ func dedup(os []string, filemap map[string][]string) []string {
 func WriteToPack(m map[string][]string, t string, tdb *badgerdb.DB) {
 	pf, err := packext.NewFileDirPFDB(tdb, path.Join(*argDir, "packs"))
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(1, err)
 		return
 	}
 	filemap, err := tdb.Group(2, 1)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(2, err)
 		return
 	}
 	g := packext.NewObjectGet(pf)
@@ -72,11 +72,11 @@ func WriteToPack(m map[string][]string, t string, tdb *badgerdb.DB) {
 		objs = dedup(objs, filemap)
 		s, err := packext.NewSelectFile(path.Join(*argDir, t), objs, g)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println(3, err)
 			return
 		}
 		if err = packext.Flush(s); err != nil {
-			fmt.Println(err)
+			fmt.Println(4, err)
 			return
 		}
 	} else {
