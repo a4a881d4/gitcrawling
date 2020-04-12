@@ -18,9 +18,11 @@ func main() {
 	// Clone the given repository to the given directory
 	Info("git clone %s %s --recursive", url, directory)
 
-	r, err := git.PlainClone(directory, true, &git.CloneOptions{
+	r, err := git.PlainClone(directory, false, &git.CloneOptions{
 		URL:               url,
+		Depth:             1,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+		Progress:          os.Stdout,
 	})
 
 	CheckIfError(err)
@@ -33,13 +35,13 @@ func main() {
 	CheckIfError(err)
 
 	fmt.Println(commit)
-	
-	it,_ := r.TreeObjects()
-	it.ForEach(func(t *object.Tree) error{
-		for k,v := range t.Entries {
-			fmt.Println(k,v.Name)
+
+	it, _ := r.TreeObjects()
+	it.ForEach(func(t *object.Tree) error {
+		for k, v := range t.Entries {
+			fmt.Println(k, v.Name)
 		}
 		fmt.Println(t.Type())
 		return nil
-		})
+	})
 }

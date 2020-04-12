@@ -51,7 +51,7 @@ func (og *ObjectGet) HeaderByHash(oh types.Hash) (*packfile.ObjectHeader, error)
 			head.Type = plumbing.REFDeltaObject
 			copy(head.Reference[:], base[:])
 		} else {
-			return nil, fmt.Errorf("Miss Base")
+			return nil, fmt.Errorf("Miss delta: %s, base: %s, type: %s", oh.String(), base.String(), head.Type.String())
 		}
 	}
 	og.head = head

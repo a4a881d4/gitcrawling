@@ -1,8 +1,6 @@
 package packext
 
 import (
-	"sort"
-
 	"github.com/a4a881d4/gitcrawling/types"
 )
 
@@ -32,13 +30,14 @@ func (p *PackFileAndDB) Get(h types.Hash) ([]byte, types.Hash, error) {
 	if err != nil {
 		return []byte{}, types.ZeroHash, err
 	}
-	sort.Sort(os)
-	raw, err := p.files.Get(os[0])
+	// sort.Sort(os)
+	find := os[0]
+	raw, err := p.files.Get(find)
 	if err != nil {
 		return []byte{}, types.ZeroHash, err
 	}
-	if os[0].OHeader.Type.IsDelta() {
-		return raw, types.Hash(os[0].OHeader.Reference), nil
+	if find.OHeader.Type.IsDelta() {
+		return raw, types.Hash(find.OHeader.Reference), nil
 	}
 	return raw, types.ZeroHash, nil
 }

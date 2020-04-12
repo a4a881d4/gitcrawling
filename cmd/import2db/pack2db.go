@@ -90,6 +90,7 @@ func importObj(tdb *badgerdb.DB) {
 func ls(tdb *badgerdb.DB, prefix []byte) []*packext.ObjEntry {
 	var res = []*packext.ObjEntry{}
 	tdb.ForEach(prefix, func(k, v []byte) error {
+		fmt.Println(string(k))
 		var oe = packext.ObjEntry{}
 		oe.SetKey(k)
 		res = append(res, &oe)

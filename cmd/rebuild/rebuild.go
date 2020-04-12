@@ -25,7 +25,7 @@ func main() {
 		return
 	}
 	defer tdb.Close()
-	packext.SortMode = "file"
+	// packext.SortMode = "file"
 	m, err := tdb.Group(3, 1)
 	if err != nil {
 		fmt.Println(err)
