@@ -33,35 +33,51 @@ func main() {
 	}
 	WriteToPack(m, *argMod, tdb)
 }
-func dedup(os []string) []string {
+func dedup(os []string, filemap map[string][]string) []string {
+	var r = []string{}
 	var m = make(map[string]bool)
 	for _, o := range os {
 		m[o] = true
 	}
-	var r = []string{}
-	for k, _ := range m {
-		r = append(r, k)
+	for _, ofs := range filemap {
+		for _, o := range ofs {
+			if _, ok := m[o]; ok && m[o] {
+				r = append(r, o)
+				m[o] = false
+			}
+		}
+	}
+
+	for k, v := range m {
+		if v {
+			fmt.Println("Miss", k)
+		}
 	}
 	return r
 }
+
 func WriteToPack(m map[string][]string, t string, tdb *badgerdb.DB) {
 	pf, err := packext.NewFileDirPFDB(tdb, path.Join(*argDir, "packs"))
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
+	filemap, err := tdb.Group(2, 1)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	g := packext.NewObjectGet(pf)
 	if objs, ok := m[t]; ok {
-		objs = dedup(objs)
-		if s, err := packext.NewSelectFile(path.Join(*argDir, t), objs, g); err != nil {
+		objs = dedup(objs, filemap)
+		s, err := packext.NewSelectFile(path.Join(*argDir, t), objs, g)
+		if err != nil {
 			fmt.Println(err)
 			return
-		} else {
-			if err = packext.Flush(s); err != nil {
-				fmt.Println(err)
-				return
-			}
+		}
+		if err = packext.Flush(s); err != nil {
+			fmt.Println(err)
+			return
 		}
 	} else {
 		fmt.Println("unsupport", t)
