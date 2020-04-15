@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"path"
 	"strings"
 
@@ -96,7 +97,16 @@ func (obj *ObjEntry) ToByte() []byte {
 	binary.BigEndian.PutUint32(buf[12:], obj.CRC32)
 	return buf
 }
-
+func (obj *ObjEntry) Bytes() []byte {
+	buf := make([]byte, 32)
+	c := crc32.NewIEEE()
+	c.Reset()
+	copy(buf[:20], obj.Hash[:])
+	binary.BigEndian.PutUint32(buf[20:24], obj.Size)
+	binary.BigEndian.PutUint32(buf[24:28], obj.CRC32)
+	copy(buf[28:], c.Sum(buf[:28]))
+	return buf
+}
 func (obj *ObjEntry) FromByte(v []byte) error {
 	var buf []byte
 	if len(v) >= 16 {

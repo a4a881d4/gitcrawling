@@ -1,4 +1,4 @@
-package gitext
+package packext
 
 import (
 	"io"
