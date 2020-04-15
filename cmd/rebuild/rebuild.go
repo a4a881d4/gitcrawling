@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"path"
+	"strings"
 
 	"github.com/a4a881d4/gitcrawling/packext"
 
@@ -26,12 +27,12 @@ func main() {
 	}
 	defer tdb.Close()
 	// packext.SortMode = "file"
-	m, err := tdb.Group(3, 1)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	WriteToPack(m, *argMod, tdb)
+	// m, err := tdb.Group(3, 1)
+	// if err != nil {
+	// 	fmt.Println(0, err)
+	// 	return
+	// }
+	WriteToPack(*argMod, tdb)
 }
 func dedup(os []string, filemap map[string][]string) []string {
 	var r = []string{}
@@ -56,30 +57,78 @@ func dedup(os []string, filemap map[string][]string) []string {
 	return r
 }
 
-func WriteToPack(m map[string][]string, t string, tdb *badgerdb.DB) {
+func WriteToPack(t string, tdb *badgerdb.DB) {
 	pf, err := packext.NewFileDirPFDB(tdb, path.Join(*argDir, "packs"))
 	if err != nil {
-		fmt.Println(1, err)
+		fmt.Println(err)
 		return
 	}
-	filemap, err := tdb.Group(2, 1)
-	if err != nil {
-		fmt.Println(2, err)
-		return
-	}
+	// filemap, err := tdb.Group(2, 1)
+	// if err != nil {
+	// 	fmt.Println(2, err)
+	// 	return
+	// }
+	// for k, _ := range filemap {
+	// 	fmt.Println(k)
+	// }
 	g := packext.NewObjectGet(pf)
-	if objs, ok := m[t]; ok {
-		objs = dedup(objs, filemap)
-		s, err := packext.NewSelectFile(path.Join(*argDir, t), objs, g)
-		if err != nil {
-			fmt.Println(3, err)
-			return
-		}
-		if err = packext.Flush(s); err != nil {
-			fmt.Println(4, err)
-			return
-		}
-	} else {
-		fmt.Println("unsupport", t)
+	objs, err := Group(tdb, t)
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
+	// if objs, ok := m[t]; ok {
+	// 	objs = dedup(objs, filemap)
+	// 	fmt.Println("De dup end", len(objs))
+	s, err := packext.NewSelectFile(path.Join(*argDir, t), objs, g)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if err = packext.Flush(s); err != nil {
+		fmt.Println(err)
+		return
+	}
+	// } else {
+	// 	fmt.Println("unsupport", t)
+	// }
+}
+
+func Group(tdb *badgerdb.DB, t string) ([]string, error) {
+
+	r := make(map[string][]string)
+	fmt.Println("Begin Group")
+	fmt.Printf("Progress:\033[s")
+	counter := 0
+	err := tdb.ForEach([]byte("hash/"), func(k, v []byte) error {
+		ss := strings.Split(string(k), "/")
+		if ss[3] == t {
+			r[ss[2]] = append(r[ss[2]], ss[1])
+		}
+		counter++
+		if counter%100000 == 0 {
+			fmt.Printf("\033[u\033[K%20d", counter)
+		}
+		return nil
+	})
+	fmt.Println("\nEnd Group")
+	fmt.Println("Begin order")
+	counter = 0
+	fmt.Printf("Progress:\033[s")
+	var os []string
+	mo := make(map[string]bool)
+	for _, v := range r {
+		for _, o := range v {
+			if _, ok := mo[o]; !ok {
+				mo[o] = true
+				os = append(os, o)
+			}
+			counter++
+			if counter%100000 == 0 {
+				fmt.Printf("\033[u\033[K%20d", counter)
+			}
+		}
+	}
+	fmt.Println("\nEnd order")
+	return os, err
 }

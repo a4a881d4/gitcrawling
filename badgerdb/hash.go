@@ -1,6 +1,7 @@
 package badgerdb
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -91,12 +92,20 @@ func (s *HashSession) NextGroup(prefixlen int, newitem func() types.Byter) (item
 }
 func (tdb *DB) Group(idx, pos int) (map[string][]string, error) {
 	r := make(map[string][]string)
+	fmt.Println("Begin Group", idx, pos)
+	fmt.Printf("Progress:\033[s")
+	counter := 0
 	err := tdb.ForEach([]byte("hash/"), func(k, v []byte) error {
 		ss := strings.Split(string(k), "/")
 		if len(ss) > idx && len(ss) > pos {
 			r[ss[idx]] = append(r[ss[idx]], ss[pos])
 		}
+		counter++
+		if counter%1000 == 0 {
+			fmt.Printf("\033[u\033[K%20d", counter)
+		}
 		return nil
 	})
+	fmt.Println("End Group")
 	return r, err
 }
