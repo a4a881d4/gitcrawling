@@ -24,11 +24,7 @@ type PackFile struct {
 	Hit  int
 }
 
-func (ps *PackFiles) NewPackFile(h types.Hash) (*PackFile, error) {
-	fn, err := ps.GetFileName.Hash2FileName(h)
-	if err != nil {
-		return nil, err
-	}
+func NewPackFileFromFN(fn string, h types.Hash) (*PackFile, error) {
 	H, err := os.Open(fn)
 	if err != nil {
 		return nil, err
@@ -37,6 +33,13 @@ func (ps *PackFiles) NewPackFile(h types.Hash) (*PackFile, error) {
 		H:    H,
 		Hash: h,
 	}, nil
+}
+func (ps *PackFiles) NewPackFile(h types.Hash) (*PackFile, error) {
+	fn, err := ps.GetFileName.Hash2FileName(h)
+	if err != nil {
+		return nil, err
+	}
+	return NewPackFileFromFN(fn, h)
 }
 
 func (pf *PackFile) Close() error {
@@ -73,7 +76,7 @@ func NewPackFiles(finder FileFinder) *PackFiles {
 
 func (ps *PackFiles) Get(e *ObjEntry) ([]byte, error) {
 	var h types.Hash
-	h =  types.Hash(e.PackFile)
+	h = types.Hash(e.PackFile)
 	if _, ok := ps.Opened[h]; !ok {
 		pf, err := ps.NewPackFile(h)
 		if err != nil {

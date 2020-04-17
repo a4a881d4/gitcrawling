@@ -63,23 +63,12 @@ func WriteToPack(t string, tdb *badgerdb.DB) {
 		fmt.Println(err)
 		return
 	}
-	// filemap, err := tdb.Group(2, 1)
-	// if err != nil {
-	// 	fmt.Println(2, err)
-	// 	return
-	// }
-	// for k, _ := range filemap {
-	// 	fmt.Println(k)
-	// }
 	g := packext.NewObjectGet(pf)
 	objs, err := Group(tdb, t)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	// if objs, ok := m[t]; ok {
-	// 	objs = dedup(objs, filemap)
-	// 	fmt.Println("De dup end", len(objs))
 	s, err := packext.NewSelectFile(path.Join(*argDir, t), objs, g)
 	if err != nil {
 		fmt.Println(err)
@@ -89,9 +78,7 @@ func WriteToPack(t string, tdb *badgerdb.DB) {
 		fmt.Println(err)
 		return
 	}
-	// } else {
-	// 	fmt.Println("unsupport", t)
-	// }
+
 }
 
 func Group(tdb *badgerdb.DB, t string) ([]string, error) {

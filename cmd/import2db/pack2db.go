@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/a4a881d4/gitcrawling/badgerdb"
-	"github.com/a4a881d4/gitcrawling/gitext"
 	"github.com/a4a881d4/gitcrawling/objext"
 	"github.com/a4a881d4/gitcrawling/packext"
 	"github.com/a4a881d4/gitcrawling/types"
@@ -56,7 +55,7 @@ func importObj(tdb *badgerdb.DB) {
 	defer tdb.EndSession()
 
 	var doSome = func(fn string) {
-		op, r, err := gitext.GetOffsetNoClassify(fn)
+		op, r, err := packext.GetOffsetNoClassify(fn)
 		tdb.Put([]byte("file/"+op.String()), []byte(fn))
 		if err != nil {
 			fmt.Println(err, fn)
