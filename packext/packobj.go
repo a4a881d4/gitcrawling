@@ -166,11 +166,14 @@ func NewIdxObj(idxf string) (r *IdxObj, err error) {
 		if last == nil {
 			return
 		}
-
+		// var dup = &idxfile.Entry{}
+		// dup.Hash = last.Hash
+		// dup.CRC32 = last.CRC32
+		// dup.Offset = last.Offset
 		var objentry = op.NewEntry(last)
 		objentry.Size = uint32(size)
 		r.objs = append(r.objs, objentry)
-		r.objm[objentry.Offset] = objentry
+		r.objm[last.Offset] = objentry
 	}
 
 	for {
@@ -188,7 +191,9 @@ func NewIdxObj(idxf string) (r *IdxObj, err error) {
 		}
 		last = e
 	}
-
+	// for k, v := range r.objm {
+	// 	fmt.Println(k, v.Offset)
+	// }
 	return
 }
 func (idx *IdxObj) Reset(v bool) {
@@ -200,9 +205,12 @@ func (idx *IdxObj) Close() error {
 	return idx.pf.Close()
 }
 func (idx *IdxObj) GetBase(o *ObjEntry) (*ObjEntry, error) {
-	base, ok := idx.objm[uint64(o.OHeader.Offset)]
+	if o.OHeader.Type != plumbing.OFSDeltaObject {
+		return nil, fmt.Errorf("has not base %s", o.OHeader.Type.String())
+	}
+	base, ok := idx.objm[uint64(o.OHeader.OffsetReference)]
 	if !ok {
-		return nil, fmt.Errorf("Miss base, cannot find base by offset")
+		return nil, fmt.Errorf("Miss base, cannot find base by offset %d", o.OHeader.OffsetReference)
 	}
 	return base, nil
 }
@@ -265,8 +273,10 @@ func (idx *IdxObj) Next(cb func(o *ObjEntry, h, b []byte) error) (err error) {
 	r := bytes.NewReader(raw)
 	s := bufio.NewReader(r)
 	var pos int
-	o.OHeader, pos, err = processOne(s)
-	body = raw[len(raw)-(pos+r.Len()):]
+	o.OHeader, pos, err = processOne(s, o)
+	hpos := len(raw) - (pos + r.Len())
+	// fmt.Println(o.OHeader.Type.String(), len(raw), pos, r.Len())
+	body = raw[hpos:]
 	head, err = idx.BuildHead(o)
 	if err != nil {
 		return err
@@ -275,7 +285,8 @@ func (idx *IdxObj) Next(cb func(o *ObjEntry, h, b []byte) error) (err error) {
 	return cb(o, head, body)
 }
 
-func processOne(r *bufio.Reader) (h *packfile.ObjectHeader, pos int, err error) {
+func processOne(r *bufio.Reader, o *ObjEntry) (h *packfile.ObjectHeader, pos int, err error) {
+	h = &packfile.ObjectHeader{}
 	h.Type, h.Length, err = readObjectTypeAndLength(r)
 	if err != nil {
 		return
@@ -289,14 +300,14 @@ func processOne(r *bufio.Reader) (h *packfile.ObjectHeader, pos int, err error) 
 			return
 		}
 
-		h.OffsetReference = h.Offset - no
+		h.OffsetReference = int64(o.Offset) - no
 	case plumbing.REFDeltaObject:
 		h.Reference, err = binary.ReadHash(r)
 		if err != nil {
 			return
 		}
 	}
-	pos = r.Size()
+	pos = r.Buffered()
 	return
 }
 
@@ -327,7 +338,7 @@ func readObjectTypeAndLength(s *bufio.Reader) (plumbing.ObjectType, int64, error
 	return t, l, err
 }
 
-func readLength(first byte, r *bufio.Reader) (int64, error) {
+func readLength(r *bufio.Reader, first byte) (int64, error) {
 	length := int64(first & maskFirstLength)
 
 	c := first

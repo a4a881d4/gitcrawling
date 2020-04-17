@@ -107,6 +107,14 @@ func (obj *ObjEntry) Bytes() []byte {
 	copy(buf[28:], c.Sum(buf[:28]))
 	return buf
 }
+func NewOEFromBytes(buf []byte) (obj *ObjEntry) {
+	obj = &ObjEntry{}
+	copy(obj.Hash[:], buf[:20])
+	obj.Size = binary.BigEndian.Uint32(buf[20:24])
+	obj.CRC32 = binary.BigEndian.Uint32(buf[24:28])
+	return
+}
+
 func (obj *ObjEntry) FromByte(v []byte) error {
 	var buf []byte
 	if len(v) >= 16 {

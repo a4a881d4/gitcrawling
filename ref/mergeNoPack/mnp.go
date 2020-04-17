@@ -19,7 +19,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
+	defer nopack.Close()
 	for _, v := range packext.DefaultMap {
 		idxf := strings.Replace(v, ".pack", ".idx", -1)
 		fmt.Println("Doing", idxf)

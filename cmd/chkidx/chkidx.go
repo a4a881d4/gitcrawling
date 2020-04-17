@@ -36,7 +36,6 @@ func main() {
 		}
 		mo[head] = offset
 		size := binary.BigEndian.Uint32(head[20:24])
-		// fmt.Println("Size @", size, offset)
 		offset += size + 32
 		_, err = fr.Seek(int64(size), 1)
 		if err != nil {
@@ -44,7 +43,4 @@ func main() {
 			break
 		}
 	}
-
-	// idxf := strings.Replace(os.Args[1], ".pack", ".idx", -1)
-
 }
