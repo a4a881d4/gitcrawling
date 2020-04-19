@@ -22,7 +22,7 @@ func (b ByteClassify) Hit(h types.Hash) bool {
 	return h[0] == byte(b)
 }
 
-func (b ByteClassify) FileNamePrefix() string {
+func (b ByteClassify) NamePrefix() string {
 	return fmt.Sprintf("packn-%02x-", b)
 }
 
@@ -33,11 +33,11 @@ const (
 
 type SplitIdx []types.Classifer
 
-func (s SplitIdx) FileNamePrefix(k int) (string, error) {
+func (s SplitIdx) NamePrefix(k int) (string, error) {
 	if k >= len(s) {
 		return "", fmt.Errorf("Out of order")
 	}
-	return s[k].FileNamePrefix(), nil
+	return s[k].NamePrefix(), nil
 }
 
 func (s SplitIdx) Number(hash plumbing.Hash) (hs []int) {

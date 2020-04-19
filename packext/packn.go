@@ -34,12 +34,12 @@ func NewPackNo(s []byte, d string) (r *Packns, err error) {
 		Pfs:      make([]*os.File, len(s)),
 	}
 	for k, v := range r.Servered {
-		r.Pfs[k], err = os.Open(path.Join(r.Dir, v.FileNamePrefix()+"no.pack"))
+		r.Pfs[k], err = os.Open(path.Join(r.Dir, v.NamePrefix()+"no.pack"))
 		if err != nil {
 			return
 		}
 		var idxr *os.File
-		idxr, err = os.Open(path.Join(r.Dir, v.FileNamePrefix()+"no.idx"))
+		idxr, err = os.Open(path.Join(r.Dir, v.NamePrefix()+"no.idx"))
 		if err != nil {
 			return
 		}
@@ -70,33 +70,11 @@ type HeadOffset struct {
 	Offset uint32
 }
 
-func (r *Packns) GetByHash(h types.Hash) (head map[int][]HeadOffset, err error) {
-	head = make(map[int][]HeadOffset)
-	var key types.KeyPart
-	for k, v := range r.Servered {
-		if v.Hit(h) {
-			copy(key[:], h[1:5])
-			p := r.Ids[k].Find(key)
-			for _, o := range p {
-				var h HeadOffset
-				h.Offset = o
-				_, err = r.Pfs[k].Seek(int64(o), 0)
-				if err != nil {
-					return
-				}
-				_, err = r.Pfs[k].Read(h.Head[:])
-				if err != nil {
-					return
-				}
-				head[k] = append(head[k], h)
-			}
-		}
+func (r *Packns) getMaxByHash(hash types.Hash) (h [32]byte, head map[int][]HeadOffset, err error) {
+	head, err = r.GetByHash(hash)
+	if err != nil {
+		return
 	}
-	return
-}
-func (r *Packns) GetAnyHash(h types.Hash) (body []byte, d bool, base [32]byte, err error) {
-	var head map[int][]HeadOffset
-	head, err = r.GetByHash(h)
 	var mh = make(map[uint32]*HeadOffset)
 	for _, v := range head {
 		for _, hh := range v {
@@ -110,8 +88,52 @@ func (r *Packns) GetAnyHash(h types.Hash) (body []byte, d bool, base [32]byte, e
 			max = k
 		}
 	}
-	return r.GetHashAndLen(mh[max].Head, head)
+	h = mh[max].Head
+	return
 }
+
+func (r *Packns) GetByHash(hash types.Hash) (head map[int][]HeadOffset, err error) {
+	head = make(map[int][]HeadOffset)
+	var key types.KeyPart
+	for k, v := range r.Servered {
+		if v.Hit(hash) {
+			copy(key[:], hash[1:5])
+			p := r.Ids[k].Find(key)
+			for _, o := range p {
+				var h HeadOffset
+				h.Offset = o
+				_, err = r.Pfs[k].Seek(int64(o), 0)
+				if err != nil {
+					return
+				}
+				_, err = r.Pfs[k].Read(h.Head[:])
+				if err != nil {
+					return
+				}
+				o := NewOEFromBytes(h.Head[:])
+				if types.Hash(o.Hash) == hash {
+					head[k] = append(head[k], h)
+				}
+			}
+		}
+	}
+	if len(head) == 0 {
+		err = ErrorNoFind
+		return
+	}
+	return
+}
+
+func (r *Packns) GetAnyHash(hash types.Hash) (body []byte, d bool, base [32]byte, err error) {
+	var head map[int][]HeadOffset
+	var h [32]byte
+	h, head, err = r.getMaxByHash(hash)
+	if err != nil {
+		return
+	}
+	return r.GetHashAndLen(h, head)
+}
+
 func (r *Packns) GetSpecial(h [32]byte) (body []byte, d bool, base [32]byte, err error) {
 	var head map[int][]HeadOffset
 	var find bool
@@ -131,6 +153,59 @@ func (r *Packns) GetSpecial(h [32]byte) (body []byte, d bool, base [32]byte, err
 		err = ErrorNoFind
 		return
 	}
+}
+
+func (r *Packns) GetRawByHash(hash types.Hash) (raw []byte, err error) {
+	var head map[int][]HeadOffset
+	var h [32]byte
+	h, head, err = r.getMaxByHash(hash)
+	if err != nil {
+		return
+	}
+	return r.getRaw(h, head)
+}
+
+func (r *Packns) GetRawSpecial(h [32]byte) (raw []byte, err error) {
+	var head map[int][]HeadOffset
+	var find bool
+	find = false
+	o := NewOEFromBytes(h[:])
+	head, err = r.GetByHash(types.Hash(o.Hash))
+	for _, v := range head {
+		for _, hh := range v {
+			if hh.Head == h {
+				find = true
+			}
+		}
+	}
+	if find {
+		return r.getRaw(h, head)
+	} else {
+		err = ErrorNoFind
+		return
+	}
+}
+
+func (r *Packns) getRaw(h [32]byte, head map[int][]HeadOffset) (raw []byte, err error) {
+	var prefact *HeadOffset
+	var fk = -1
+	for k, v := range head {
+		for _, hh := range v {
+			if hh.Head == h {
+				fk = k
+				prefact = &hh
+			}
+		}
+	}
+	if fk == -1 {
+		err = ErrorNoFind
+		return
+	}
+	o := NewOEFromBytes(prefact.Head[:])
+	r.Pfs[fk].Seek(int64(prefact.Offset), 0)
+	raw = make([]byte, o.Size)
+	_, err = io.ReadFull(r.Pfs[fk], raw)
+	return
 }
 
 func (r *Packns) GetHashAndLen(h [32]byte, head map[int][]HeadOffset) (body []byte, deta bool, base [32]byte, err error) {

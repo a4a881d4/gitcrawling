@@ -59,7 +59,7 @@ func NewMergeNoFile(dir string) (*MergeNoFile, error) {
 		split: DefaultByteSplit(),
 	}
 	for k, _ := range m.split {
-		fnb, err := m.split.FileNamePrefix(k)
+		fnb, err := m.split.NamePrefix(k)
 		if err != nil {
 			return nil, err
 		}

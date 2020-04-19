@@ -30,6 +30,41 @@ type ObjEntry struct {
 	RealType plumbing.ObjectType
 }
 
+type Selector interface {
+	Determine([]*ObjEntry) *ObjEntry
+}
+
+type maxSelect struct{}
+type MatchSelct types.Hash
+
+func (h MatchSelct) Determine(objs []*ObjEntry) *ObjEntry {
+	if len(objs) == 0 {
+		return nil
+	}
+	var maxidx = 0
+	for k, v := range objs {
+		if v.Size > objs[maxidx].Size {
+			maxidx = k
+		}
+	}
+	return objs[maxidx]
+}
+
+func (maxSelect) Determine(objs []*ObjEntry) *ObjEntry {
+	if len(objs) == 0 {
+		return nil
+	}
+	var maxidx = 0
+	for k, v := range objs {
+		if v.Size > objs[maxidx].Size {
+			maxidx = k
+		}
+	}
+	return objs[maxidx]
+}
+
+var MaxSelect maxSelect
+
 type OriginPackFile types.Hash
 
 func (a OriginPackFile) Less(b OriginPackFile) bool {
