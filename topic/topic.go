@@ -24,6 +24,18 @@ var (
 	ErrorNoFind = errors.New("No Find")
 )
 
+func NewServerByteChannels(dir string) (m []*ServerChannel, err error) {
+	for i := 0; i < 256; i++ {
+		var c *ServerChannel
+		c, err = NewServerChannel(dir, packext.ByteClassify(i))
+		if err != nil {
+			return
+		}
+		m = append(m, c)
+	}
+	return
+}
+
 func NewServerChannel(dir string, c types.Classifer) (m *ServerChannel, err error) {
 	m = &ServerChannel{
 		Dir:   dir,
@@ -87,10 +99,31 @@ func (m *ServerChannel) getObj(hash types.Hash, sel packext.Selector) (obj *pack
 		err = ErrorNoFind
 		return
 	}
-	objs = sel(objs)
+	obj = sel.Determine(objs)
 	return
 }
 
-func (m *ServerChannel) GetSepcial(h [32]byte) (raw []byte, err error) {
+func (m *ServerChannel) GetSepcial(h *packext.HeaderExt) (raw []byte, err error) {
+	var o, fo *packext.ObjEntry
+	o, err = h.ToObjEntry()
+	fo, err = m.getObj(types.Hash(o.Hash), h)
+	raw = make([]byte, int(fo.Size))
+	_, err = m.Pfs.Seek(int64(o.Offset), 0)
+	if err != nil {
+		return
+	}
+	_, err = io.ReadFull(m.Pfs, raw)
+	return
+}
 
+func (m *ServerChannel) GetByHash(h types.Hash) (raw []byte, err error) {
+	var o, fo *packext.ObjEntry
+	fo, err = m.getObj(h, packext.MaxSelect)
+	raw = make([]byte, int(fo.Size))
+	_, err = m.Pfs.Seek(int64(o.Offset), 0)
+	if err != nil {
+		return
+	}
+	_, err = io.ReadFull(m.Pfs, raw)
+	return
 }
