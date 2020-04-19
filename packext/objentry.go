@@ -30,8 +30,10 @@ type ObjEntry struct {
 	RealType plumbing.ObjectType
 }
 
+type 
+
 type Selector interface {
-	Determine([]*ObjEntry) *ObjEntry
+	Determine([]Headerext) *ObjEntry
 }
 
 type maxSelect struct{}
