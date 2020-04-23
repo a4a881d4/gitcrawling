@@ -275,7 +275,6 @@ func (idx *IdxObj) Next(cb func(o *ObjEntry, h, b []byte) error) (err error) {
 	var pos int
 	o.OHeader, pos, err = processOne(s, o)
 	hpos := len(raw) - (pos + r.Len())
-	// fmt.Println(o.OHeader.Type.String(), len(raw), pos, r.Len())
 	body = raw[hpos:]
 	head, err = idx.BuildHead(o)
 	if err != nil {

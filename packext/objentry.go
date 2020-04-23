@@ -115,7 +115,9 @@ func (obj *ObjEntry) Bytes() []byte {
 	copy(buf[:20], obj.Hash[:])
 	binary.BigEndian.PutUint32(buf[20:24], obj.Size)
 	binary.BigEndian.PutUint32(buf[24:28], obj.CRC32)
-	copy(buf[28:], c.Sum(buf[:28]))
+	c.Write(buf[:28])
+	crc := c.Sum32()
+	binary.BigEndian.PutUint32(buf[28:], crc)
 	return buf
 }
 func NewOEFromBytes(buf []byte) (obj *ObjEntry) {
