@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"hash/crc32"
 	"path"
 	"strings"
@@ -55,7 +54,7 @@ var DefaultOPS = NewOriginPackFiles()
 func (ops OriginPackFiles) GetHash(fn string) (OriginPackFile, error) {
 	sfn := strings.Replace(fn, `\`, `/`, -1)
 	baseName := path.Base(sfn)
-	fmt.Println("BaseName", baseName)
+	// fmt.Println("BaseName", baseName)
 	if baseName[:5] != "pack-" || len(baseName) < 45 {
 		return OriginPackFile(plumbing.ZeroHash), ErrBadName
 	}
