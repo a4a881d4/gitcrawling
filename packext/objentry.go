@@ -72,13 +72,13 @@ func (ops OriginPackFiles) GetHash(fn string) (OriginPackFile, error) {
 	var hash OriginPackFile
 	copy(hash[:], h[:])
 	ops.lock.Lock()
-	if _, ok := ops.fs[hash]; !ok {
-		ops.fs[hash] = fn
-	}
+	ops.fs[hash] = fn
 	ops.lock.Unlock()
 	return hash, nil
 }
 func (ops OriginPackFiles) GetFileName(hash OriginPackFile) (string, error) {
+	ops.lock.Lock()
+	defer ops.lock.Unlock()
 	if fn, ok := ops.fs[hash]; ok {
 		return fn, nil
 	} else {
