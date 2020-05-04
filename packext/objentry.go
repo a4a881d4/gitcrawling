@@ -79,7 +79,7 @@ func (ops OriginPackFiles) GetHash(fn string) (OriginPackFile, error) {
 	return hash, nil
 }
 func (ops OriginPackFiles) GetFileName(hash OriginPackFile) (string, error) {
-	if fn, ok := ops[hash]; ok {
+	if fn, ok := ops.fs[hash]; ok {
 		return fn, nil
 	} else {
 		return "", ErrMiss
@@ -112,7 +112,10 @@ func (obj *ObjEntry) ToHeaderExt() (buf HeaderExt) {
 	copy(buf[:20], obj.Hash[:])
 	binary.BigEndian.PutUint32(buf[20:24], obj.Size)
 	binary.BigEndian.PutUint32(buf[24:28], obj.CRC32)
-	copy(buf[28:], c.Sum(buf[:28]))
+	c.Write(buf[:28])
+	hcrc := c.Sum32()
+	binary.BigEndian.PutUint32(buf[28:], hcrc)
+
 	return buf
 }
 
