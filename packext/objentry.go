@@ -7,6 +7,7 @@ import (
 	"hash/crc32"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/a4a881d4/gitcrawling/types"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -43,10 +44,16 @@ func (a OriginPackFile) Less(b OriginPackFile) bool {
 	return false
 }
 
-type OriginPackFiles map[OriginPackFile]string
+type OriginPackFiles struct {
+	fs   map[OriginPackFile]string
+	lock sync.Mutex
+}
 
 func NewOriginPackFiles() OriginPackFiles {
-	return make(map[OriginPackFile]string)
+	return OriginPackFiles{
+		fs: make(map[OriginPackFile]string),
+	}
+
 }
 
 var DefaultOPS = NewOriginPackFiles()
@@ -64,9 +71,11 @@ func (ops OriginPackFiles) GetHash(fn string) (OriginPackFile, error) {
 	}
 	var hash OriginPackFile
 	copy(hash[:], h[:])
-	if _, ok := ops[hash]; !ok {
-		ops[hash] = fn
+	ops.lock.Lock()
+	if _, ok := ops.fs[hash]; !ok {
+		ops.fs[hash] = fn
 	}
+	ops.lock.Unlock()
 	return hash, nil
 }
 func (ops OriginPackFiles) GetFileName(hash OriginPackFile) (string, error) {
